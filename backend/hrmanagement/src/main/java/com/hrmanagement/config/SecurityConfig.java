@@ -27,10 +27,12 @@ public class SecurityConfig {
             // 2. Sayfa/Endpoint yetkilendirmeleri
             .authorizeHttpRequests(auth -> auth
                 // Herkese açık alanlar (Swagger, Login endpoint vb. ekleyebilirsin)
-                .requestMatchers("/api/public/**").permitAll()
+                .requestMatchers("/api/public/**", "/api/employees/register","api/employees/login").permitAll()
                 
                 // Hassas HR işlemleri (Bordro, Maaş, Personel Ekleme)
                 .requestMatchers("/api/payroll/**", "/api/employees/manage/**").hasAnyRole("ADMIN", "HR")
+
+                
                 
                 // Diğer tüm istekler kimlik doğrulama gerektirir
                 .anyRequest().authenticated()

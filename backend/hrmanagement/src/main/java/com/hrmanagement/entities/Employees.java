@@ -33,17 +33,23 @@ public class Employees {
     @Column(name = "last_name", nullable = false)
     private String lastname;
 
+    @Column(name = "tc_no", nullable = false, length =11, unique = true)
+    private String tcNo;
+
     @Column(name = "position", nullable = false)
     private String position;
 
     @Column(name = "department", nullable = false)
     private String department;
 
-    @Column(name = "email", nullable = false)
+    @Column(name = "email", nullable = false, unique = true)
     private String email;
     
     @Column(name = "phone_number", nullable = false)
     private String phoneNumber;
+
+    @Column(name = "password", nullable = false)
+    private String password;
 
     @OneToOne(mappedBy = "employee", cascade = CascadeType.ALL,fetch = FetchType.LAZY)
     private Payroll payroll;
