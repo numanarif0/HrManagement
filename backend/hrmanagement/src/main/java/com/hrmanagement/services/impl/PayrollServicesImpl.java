@@ -53,7 +53,7 @@ public class PayrollServicesImpl implements IPayrollServices {
 
         // Attendance: employee + tarih aralığı
         List<Attendance> records =
-                attandanceRepository.findAllByEmployee_IdAndWorkDateBetween(employeeId, start, end);
+    attandanceRepository.findAllByEmployee_IdAndDateBetween(employeeId, start, end);
 
         BigDecimal totalHours = records.stream()
                 .map(a -> toBigDecimal(a.getHoursWorked()))

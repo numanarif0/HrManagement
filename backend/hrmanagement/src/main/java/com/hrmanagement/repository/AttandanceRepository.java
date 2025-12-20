@@ -14,7 +14,7 @@ public interface AttandanceRepository extends JpaRepository<Attendance, Long> {
 
     List<Attendance> findByEmployeeId(Long id);
 
-    List<Attendance> findAllByEmployee_IdAndWorkDateBetween(
+        List<Attendance> findAllByEmployee_IdAndDateBetween(
             Long employeeId,
             LocalDate start,
             LocalDate end
