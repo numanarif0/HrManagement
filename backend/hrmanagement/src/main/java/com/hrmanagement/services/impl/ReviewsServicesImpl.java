@@ -27,14 +27,16 @@ public class ReviewsServicesImpl implements IReviewsServices{
         this.reviewsRepository = reviewsRepository;
     }
 
-    @Override
-    public DtoReviews addReviews(DtoReviewsIU dtoReviews){
+   @Override
+    public DtoReviews addReviews(DtoReviewsIU dtoReviews) {
 
         Employees employee = employeesRepository.findById(dtoReviews.getId())
                 .orElseThrow(() -> new RuntimeException("Employee not found with id: " + dtoReviews.getId()));
 
         Reviews reviews = new Reviews();
-        BeanUtils.copyProperties(dtoReviews, reviews);
+
+        BeanUtils.copyProperties(dtoReviews, reviews, "id"); 
+
         reviews.setEmployee(employee);
         
         Reviews savedReviews = reviewsRepository.save(reviews);

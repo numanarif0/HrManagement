@@ -9,6 +9,6 @@ import java.util.List;
 @Repository
 public interface ReviewsRepository extends JpaRepository<Reviews,Long>{
 
-    List<Reviews> findByReviewsId(Long id);
+  
 
 }

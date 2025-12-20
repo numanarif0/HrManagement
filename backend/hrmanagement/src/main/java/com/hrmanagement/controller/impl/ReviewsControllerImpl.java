@@ -25,21 +25,20 @@ public class ReviewsControllerImpl implements IReviewsController{
     @PostMapping("add")
     public DtoReviews addReviews(@RequestBody DtoReviewsIU dtoReviewsIU){
 
-        return iReviewsServices.addReviews();
+        return iReviewsServices.addReviews(dtoReviewsIU);
     }
 
     @Override
     @PutMapping("update/{id}")
     public DtoReviewsIU updateReviews(@PathVariable Long id ,@RequestBody DtoReviewsIU dtoReviewsIU){
 
-        return iReviewsServices.updateReviews();
+        return iReviewsServices.updateReviews(id,dtoReviewsIU);
     }
 
     @Override
     @DeleteMapping("delete/{id}")
     public void deleteReviews(@PathVariable Long id){
-
-        return iReviewsServices.deleteReviews();
+        iReviewsServices.deleteReviews(id);
     }
 
 

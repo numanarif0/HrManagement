@@ -35,10 +35,10 @@ public class Reviews {
     @Column(name = "comments", nullable = false) 
     private String comments;
 
-    @Column(name = "rating", nullable = false) 
+    @Column(name = "rating") 
     private Integer rating;
 
-    @ManyToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     private Employees employee;
 
 
