@@ -30,19 +30,19 @@ public class Attendance {
     @Column(name = "date", nullable = false)
     private LocalDate date;
 
-    @Column(name = "check_in_time", nullable = false)
+    @Column(name = "check_in_time", nullable = true)
     private LocalTime checkInTime;
 
-    @Column(name = "check_out_time", nullable = false)
+    @Column(name = "check_out_time", nullable = true)
     private LocalTime checkOutTime;
 
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = true)
     private String status;
 
-    @Column(name = "hours_worked", nullable = false)
+    @Column(name = "hours_worked", nullable = true)
     private Double hoursWorked;
 
-    @ManyToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @ManyToOne( fetch = FetchType.LAZY)
     private Employees employee;
 
 
