@@ -3,7 +3,6 @@ package com.hrmanagement.services.impl;
 import java.util.Optional;
 
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -12,7 +11,6 @@ import com.hrmanagement.entities.Employees;
 import com.hrmanagement.repository.EmployeesRepository;
 import com.hrmanagement.services.IEmployeesServices;
 
-import ch.qos.logback.core.joran.util.beans.BeanUtil;
 import jakarta.transaction.Transactional;
 
 @Service
@@ -21,7 +19,7 @@ public class EmployeesServicesImpl implements IEmployeesServices {
     private final PasswordEncoder passwordEncoder;
     private final EmployeesRepository employeesRepository;
 
-    @Autowired
+    
     public EmployeesServicesImpl(PasswordEncoder passwordEncoder, EmployeesRepository employeesRepository) {
         this.passwordEncoder = passwordEncoder;
         this.employeesRepository = employeesRepository;

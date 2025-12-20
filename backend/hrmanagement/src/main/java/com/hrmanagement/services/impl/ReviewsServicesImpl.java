@@ -1,9 +1,8 @@
 package com.hrmanagement.services.impl;
 
-import java.util.List;
+
 
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.hrmanagement.dto.DtoReviews;
@@ -21,7 +20,7 @@ public class ReviewsServicesImpl implements IReviewsServices{
     private final ReviewsRepository reviewsRepository;
 
 
-    @Autowired
+    
     public ReviewsServicesImpl(EmployeesRepository employeesRepository,ReviewsRepository reviewsRepository){
         this.employeesRepository = employeesRepository;
         this.reviewsRepository = reviewsRepository;
