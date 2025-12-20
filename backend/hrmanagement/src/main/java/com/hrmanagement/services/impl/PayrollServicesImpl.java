@@ -35,70 +35,71 @@ public class PayrollServicesImpl implements IPayrollServices {
     @Override
     @Transactional
     public Payroll generatePayroll(DtoPayrollGenerateRequest req) {
-
         int month = req.getMonth();
         int year = req.getYear();
         Long employeeId = req.getEmployeeId();
 
-        if (month < 1 || month > 12) {
-            throw new IllegalArgumentException("month 1..12 olmalı");
-        }
-        if (employeeId == null) {
-            throw new IllegalArgumentException("employeeId boş olamaz");
-        }
+        if (month < 1 || month > 12) throw new IllegalArgumentException("month 1..12 olmalı");
+        if (year < 2000) throw new IllegalArgumentException("year geçersiz: " + year);
+        if (employeeId == null) throw new IllegalArgumentException("employeeId zorunlu");
 
         Employees emp = employeesRepository.findById(employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("Employee bulunamadı: " + employeeId));
 
-        // Dönem aralığı (şimdilik hesap için dursun; filtrelemeyi sonra ekleriz)
+        // Dönem aralığı
         YearMonth ym = YearMonth.of(year, month);
         LocalDate start = ym.atDay(1);
         LocalDate end = ym.atEndOfMonth();
 
-        // Attendance saatlerini topla
-        // Şu an findAll() ile gidiyorsun; derleme için OK.
-        // İyileştirme: repository'ye employeeId + tarih aralığı query ekle.
-        List<Attendance> records = attandanceRepository.findAll();
+        // Attendance: employee + tarih aralığı
+        List<Attendance> records =
+                attandanceRepository.findAllByEmployee_IdAndWorkDateBetween(employeeId, start, end);
 
         BigDecimal totalHours = records.stream()
-                .filter(a -> a.getEmployee() != null && a.getEmployee().getId().equals(employeeId))
                 .map(a -> toBigDecimal(a.getHoursWorked()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Maaş kaynağı:
-        // 1) Employees içinde salary varsa: emp.getSalary()
-        // 2) Yoksa request'ten al: req.getBaseSalary()
-        BigDecimal baseSalary = req.getBaseSalary();
-        if (baseSalary == null) {
-            // Eğer Employees'a salary eklediysen burayı aç:
-            // baseSalary = emp.getSalary();
-
-            throw new IllegalArgumentException("baseSalary boş. Employees'ta salary yoksa request ile gönder.");
+        // Maaş: Employees'ta salary yoksa request'ten baseSalary kullan
+        BigDecimal baseSalary = nullSafe(req.getBaseSalary());
+        if (baseSalary.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("baseSalary zorunlu (Employees'ta salary yoksa request'ten gönderilmeli)");
         }
 
-        int standardHours = req.getStandardMonthlyHours();
-        if (standardHours <= 0) standardHours = 160;
+        int standardHoursInt = req.getStandardMonthlyHours();
+        if (standardHoursInt <= 0) throw new IllegalArgumentException("standardMonthlyHours > 0 olmalı");
 
-        BigDecimal overtimeMultiplier = nullSafe(req.getOvertimeMultiplier(), new BigDecimal("1.5"));
-        BigDecimal incomeTaxRate = nullSafe(req.getIncomeTaxRate(), new BigDecimal("0.15"));
+        BigDecimal standardHours = BigDecimal.valueOf(standardHoursInt);
 
-        BigDecimal standardHoursBD = BigDecimal.valueOf(standardHours);
+        BigDecimal hourlyRate = baseSalary.divide(standardHours, 6, RoundingMode.HALF_UP);
 
-        BigDecimal hourlyRate = baseSalary.divide(standardHoursBD, 6, RoundingMode.HALF_UP);
-
-        BigDecimal overtimeHours = totalHours.subtract(standardHoursBD);
+        BigDecimal overtimeHours = totalHours.subtract(standardHours);
         if (overtimeHours.compareTo(BigDecimal.ZERO) < 0) overtimeHours = BigDecimal.ZERO;
+
+        BigDecimal overtimeMultiplier = nullSafe(req.getOvertimeMultiplier());
+        if (overtimeMultiplier.compareTo(BigDecimal.ZERO) < 0) overtimeMultiplier = BigDecimal.ZERO;
 
         BigDecimal overtimePay = overtimeHours.multiply(hourlyRate).multiply(overtimeMultiplier);
 
         BigDecimal gross = baseSalary
                 .add(overtimePay)
-                .add(nullSafe(req.getBonus(), BigDecimal.ZERO));
+                .add(nullSafe(req.getBonus()));
+
+        BigDecimal incomeTaxRate = nullSafe(req.getIncomeTaxRate());
+        if (incomeTaxRate.compareTo(BigDecimal.ZERO) < 0) incomeTaxRate = BigDecimal.ZERO;
 
         BigDecimal incomeTax = gross.multiply(incomeTaxRate);
-        BigDecimal deductions = incomeTax.add(nullSafe(req.getExtraDeduction(), BigDecimal.ZERO));
+        BigDecimal deductions = incomeTax.add(nullSafe(req.getExtraDeduction()));
 
         BigDecimal net = gross.subtract(deductions);
+
+        // Para alanlarını 2 haneye yuvarla
+        baseSalary = money(baseSalary);
+        totalHours = totalHours.setScale(2, RoundingMode.HALF_UP);
+        overtimeHours = overtimeHours.setScale(2, RoundingMode.HALF_UP);
+        overtimePay = money(overtimePay);
+        gross = money(gross);
+        deductions = money(deductions);
+        net = money(net);
 
         Payroll payroll = payrolRepository
                 .findByEmployee_IdAndYearAndMonth(employeeId, year, month)
@@ -107,15 +108,14 @@ public class PayrollServicesImpl implements IPayrollServices {
         payroll.setEmployee(emp);
         payroll.setYear(year);
         payroll.setMonth(month);
-
-        payroll.setBaseSalary(scale2(baseSalary));
-        payroll.setTotalWorkHours(scale2(totalHours));
-        payroll.setOvertimeHours(scale2(overtimeHours));
-        payroll.setOvertimePay(scale2(overtimePay));
-        payroll.setBonus(scale2(nullSafe(req.getBonus(), BigDecimal.ZERO)));
-        payroll.setGrossSalary(scale2(gross));
-        payroll.setDeductions(scale2(deductions));
-        payroll.setNetSalary(scale2(net));
+        payroll.setBaseSalary(baseSalary);
+        payroll.setTotalWorkHours(totalHours);
+        payroll.setOvertimeHours(overtimeHours);
+        payroll.setOvertimePay(overtimePay);
+        payroll.setBonus(money(nullSafe(req.getBonus())));
+        payroll.setGrossSalary(gross);
+        payroll.setDeductions(deductions);
+        payroll.setNetSalary(net);
 
         return payrolRepository.save(payroll);
     }
@@ -137,20 +137,23 @@ public class PayrollServicesImpl implements IPayrollServices {
         return payrolRepository.findAllByEmployee_IdAndYear(employeeId, year);
     }
 
-    private static BigDecimal nullSafe(BigDecimal v, BigDecimal def) {
-        return v == null ? def : v;
+    private static BigDecimal nullSafe(BigDecimal v) {
+        return v == null ? BigDecimal.ZERO : v;
     }
 
-    private static BigDecimal scale2(BigDecimal v) {
-        return v.setScale(2, RoundingMode.HALF_UP);
+    private static BigDecimal money(BigDecimal v) {
+        return (v == null ? BigDecimal.ZERO : v).setScale(2, RoundingMode.HALF_UP);
     }
 
-    // Attendance.getHoursWorked() BigDecimal değilse (Double/Integer vs.) burası çözer
-    private static BigDecimal toBigDecimal(Object v) {
-        if (v == null) return BigDecimal.ZERO;
-        if (v instanceof BigDecimal bd) return bd;
-        if (v instanceof Number n) return BigDecimal.valueOf(n.doubleValue());
-        // String gelirse de çalışsın
-        return new BigDecimal(v.toString());
+    /** Attendance.hoursWorked Integer/Double/String vs olabilir → BigDecimal’e çevir. */
+    private static BigDecimal toBigDecimal(Object hoursWorked) {
+        if (hoursWorked == null) return BigDecimal.ZERO;
+        if (hoursWorked instanceof BigDecimal bd) return bd;
+        if (hoursWorked instanceof Integer i) return BigDecimal.valueOf(i);
+        if (hoursWorked instanceof Long l) return BigDecimal.valueOf(l);
+        if (hoursWorked instanceof Double d) return BigDecimal.valueOf(d);
+        if (hoursWorked instanceof Float f) return BigDecimal.valueOf(f.doubleValue());
+        if (hoursWorked instanceof Number n) return BigDecimal.valueOf(n.doubleValue());
+        return new BigDecimal(hoursWorked.toString());
     }
 }
