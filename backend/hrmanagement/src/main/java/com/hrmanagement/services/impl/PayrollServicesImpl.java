@@ -129,12 +129,31 @@ public class PayrollServicesImpl implements IPayrollServices {
     @Override
     public Payroll getByEmployeeAndPeriod(Long employeeId, int year, int month) {
         return payrolRepository.findByEmployee_IdAndYearAndMonth(employeeId, year, month)
-                .orElseThrow(() -> new IllegalArgumentException("Payroll bulunamadı (employee/period)"));
+                .orElse(null);
     }
 
     @Override
     public List<Payroll> listByEmployeeYear(Long employeeId, int year) {
         return payrolRepository.findAllByEmployee_IdAndYear(employeeId, year);
+    }
+
+    @Override
+    public List<Payroll> getAllByEmployee(Long employeeId) {
+        System.out.println("Service getAllByEmployee id=" + employeeId);
+        return payrolRepository.findAllByEmployee_IdOrderByYearDescMonthDesc(employeeId);
+    }
+
+    @Override
+    @Transactional
+    public void deletePayroll(Long id) {
+        System.out.println("deletePayroll çağrıldı, id: " + id);
+        if (!payrolRepository.existsById(id)) {
+            System.out.println("Payroll bulunamadı: " + id);
+            throw new IllegalArgumentException("Payroll bulunamadı: " + id);
+        }
+        System.out.println("Siliniyor (hardDelete)...");
+        int affected = payrolRepository.hardDeleteById(id);
+        System.out.println("Silindi, etkilenen kayıt: " + affected);
     }
 
     private static BigDecimal nullSafe(BigDecimal v) {

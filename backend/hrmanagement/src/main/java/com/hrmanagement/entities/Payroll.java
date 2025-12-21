@@ -20,8 +20,9 @@ public class Payroll {
     private Long id;
 
     // Employees entity'nizdeki ilişki alanına göre uyarlayın:
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "employee_id", nullable = false)
+    @JsonIgnoreProperties({"payroll", "attendance", "reviews", "password"})
     private Employees employee;
 
     @Column(nullable = false)

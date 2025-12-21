@@ -1,5 +1,7 @@
 package com.hrmanagement.services.impl;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.BeanUtils;
@@ -66,5 +68,67 @@ public class EmployeesServicesImpl implements IEmployeesServices {
         }
 
         return null; 
+    }
+
+    @Override
+    public List<DtoEmployees> getAllEmployees() {
+        List<Employees> employeesList = employeesRepository.findAll();
+        List<DtoEmployees> dtoList = new ArrayList<>();
+        
+        for (Employees emp : employeesList) {
+            DtoEmployees dto = new DtoEmployees();
+            BeanUtils.copyProperties(emp, dto);
+            dto.setPassword(null);
+            dtoList.add(dto);
+        }
+        
+        return dtoList;
+    }
+
+    @Override
+    public DtoEmployees getEmployeeById(Long id) {
+        Optional<Employees> optionalEmployee = employeesRepository.findById(id);
+        if (optionalEmployee.isPresent()) {
+            DtoEmployees dto = new DtoEmployees();
+            BeanUtils.copyProperties(optionalEmployee.get(), dto);
+            dto.setPassword(null);
+            return dto;
+        }
+        return null;
+    }
+
+    @Override
+    @Transactional
+    public DtoEmployees updateEmployee(Long id, DtoEmployees dtoEmployees) {
+        Optional<Employees> optionalEmployee = employeesRepository.findById(id);
+        if (optionalEmployee.isPresent()) {
+            Employees employee = optionalEmployee.get();
+            
+            employee.setFirstname(dtoEmployees.getFirstname());
+            employee.setLastname(dtoEmployees.getLastname());
+            employee.setPosition(dtoEmployees.getPosition());
+            employee.setDepartment(dtoEmployees.getDepartment());
+            employee.setEmail(dtoEmployees.getEmail());
+            employee.setPhoneNumber(dtoEmployees.getPhoneNumber());
+            employee.setTcNo(dtoEmployees.getTcNo());
+            
+            // Şifre değiştirilmek isteniyorsa güncelle
+            if (dtoEmployees.getPassword() != null && !dtoEmployees.getPassword().isEmpty()) {
+                employee.setPassword(passwordEncoder.encode(dtoEmployees.getPassword()));
+            }
+            
+            Employees savedEmployee = employeesRepository.save(employee);
+            DtoEmployees responseDto = new DtoEmployees();
+            BeanUtils.copyProperties(savedEmployee, responseDto);
+            responseDto.setPassword(null);
+            return responseDto;
+        }
+        return null;
+    }
+
+    @Override
+    @Transactional
+    public void deleteEmployee(Long id) {
+        employeesRepository.deleteById(id);
     }
 }

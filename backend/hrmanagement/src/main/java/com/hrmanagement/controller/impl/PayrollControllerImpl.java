@@ -39,12 +39,31 @@ public class PayrollControllerImpl implements IPayrollController {
         @RequestParam int year,
         @RequestParam int month
     ) {
-        return ResponseEntity.ok(payrollServices.getByEmployeeAndPeriod(employeeId, year, month));
+        Payroll payroll = payrollServices.getByEmployeeAndPeriod(employeeId, year, month);
+        if (payroll == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(payroll);
     }
 
     @Override
     @GetMapping("/employee/{employeeId}/year/{year}")
     public ResponseEntity<List<Payroll>> listByEmployeeYear(@PathVariable Long employeeId, @PathVariable int year) {
         return ResponseEntity.ok(payrollServices.listByEmployeeYear(employeeId, year));
+    }
+
+    @Override
+    @GetMapping("/employee/{employeeId}/all")
+    public ResponseEntity<List<Payroll>> getAllByEmployee(@PathVariable Long employeeId) {
+        System.out.println("getAllByEmployee called with employeeId=" + employeeId);
+        return ResponseEntity.ok(payrollServices.getAllByEmployee(employeeId));
+    }
+
+    @Override
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletePayroll(@PathVariable Long id) {
+        System.out.println("deletePayroll controller id=" + id);
+        payrollServices.deletePayroll(id);
+        return ResponseEntity.noContent().build();
     }
 }

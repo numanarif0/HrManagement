@@ -11,4 +11,6 @@ public interface IPayrollController {
     ResponseEntity<Payroll> getById(Long id);
     ResponseEntity<Payroll> getByEmployeeAndPeriod(Long employeeId, int year, int month);
     ResponseEntity<List<Payroll>> listByEmployeeYear(Long employeeId, int year);
+    ResponseEntity<List<Payroll>> getAllByEmployee(Long employeeId);
+    ResponseEntity<Void> deletePayroll(Long id);
 }

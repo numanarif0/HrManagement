@@ -11,13 +11,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class DtoReviewsIU {
 
-
     private Long id;
     private LocalDate reviewDate;
     private String reviewerName;
     private String comments;
     private Integer rating;
-
-
+    private Long employeeId;
+    private Long reviewerId;
 
 }

@@ -2,6 +2,8 @@ package com.hrmanagement.entities;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -51,12 +53,15 @@ public class Employees {
     @Column(name = "password", nullable = false)
     private String password;
 
+    @JsonIgnore
     @OneToOne(mappedBy = "employee", cascade = CascadeType.ALL,fetch = FetchType.LAZY)
     private Payroll payroll;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL,fetch = FetchType.LAZY)
     private List<Attendance> attendance;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL,fetch = FetchType.LAZY)
     private List<Reviews> reviews;
     

@@ -1,5 +1,6 @@
 package com.hrmanagement.dto;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 
 import lombok.AllArgsConstructor;
@@ -11,13 +12,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class DtoAttandance {
 
-
     private Long id;
+    private LocalDate date;
     private LocalTime checkInTime;
     private LocalTime checkOutTime;
     private Double hoursWorked;
     private Long employeeId;
-
-
-
+    private String status;
 }

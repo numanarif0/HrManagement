@@ -10,4 +10,6 @@ public interface IPayrollServices {
     Payroll getById(Long id);
     Payroll getByEmployeeAndPeriod(Long employeeId, int year, int month);
     List<Payroll> listByEmployeeYear(Long employeeId, int year);
+    List<Payroll> getAllByEmployee(Long employeeId);
+    void deletePayroll(Long id);
 }

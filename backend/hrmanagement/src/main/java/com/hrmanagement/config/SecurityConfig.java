@@ -13,33 +13,41 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of("http://localhost:3000"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        configuration.setAllowCredentials(true);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            // CORS yapılandırması
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             // 1. CSRF korumasını kapatıyoruz (REST API için gerekli)
             .csrf(AbstractHttpConfigurer::disable)
             
-            // 2. Sayfa/Endpoint yetkilendirmeleri
+            // 2. Tüm API endpoint'lerini açık hale getiriyoruz (geliştirme aşaması)
             .authorizeHttpRequests(auth -> auth
-                // Herkese açık alanlar (Swagger, Login endpoint vb. ekleyebilirsin)
-                .requestMatchers("/api/public/**", "/api/employees/register","/api/employees/login","/api/attandance/checkin","/api/attandance/checkout","/api/attandance/totalhours","/api/reviews/add","/api/reviews/delete","/api/reviews/update").permitAll()
-                
-                // Hassas HR işlemleri (Bordro, Maaş, Personel Ekleme)
-                .requestMatchers("/api/payroll/**", "/api/employees/manage/**").hasAnyRole("ADMIN", "HR")
-
-                
-                
-                // Diğer tüm istekler kimlik doğrulama gerektirir
-                .anyRequest().authenticated()
-            )
-            
-            // 3. Postman veya Tarayıcıdan basit kullanıcı adı/şifre ile giriş (Basic Auth)
-            .httpBasic(Customizer.withDefaults());
+                .anyRequest().permitAll()
+            );
 
         return http.build();
     }

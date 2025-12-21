@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class DtoEmployees {
 
+    private Long id;
     private String firstname;
     private String lastname;
     private String position;
