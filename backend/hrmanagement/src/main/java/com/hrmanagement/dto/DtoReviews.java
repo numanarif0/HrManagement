@@ -17,5 +17,6 @@ public class DtoReviews {
     private String comments;
     private Integer rating;
     private Long employeeId;
+    private Long reviewerId;
 
 }

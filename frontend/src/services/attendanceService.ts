@@ -14,13 +14,23 @@ export const attendanceService = {
     return response.data;
   },
 
-  checkIn: async (data: AttendanceRequest): Promise<Attendance> => {
-    const response = await api.post('/attandance/checkin', data);
+  checkIn: async (employeeId: number): Promise<Attendance> => {
+    const response = await api.post('/attandance/checkin', { employeeId });
     return response.data;
   },
 
-  checkOut: async (data: AttendanceRequest): Promise<Attendance> => {
-    const response = await api.post('/attandance/checkout', data);
+  checkOut: async (employeeId: number): Promise<Attendance> => {
+    const response = await api.post('/attandance/checkout', { employeeId });
+    return response.data;
+  },
+
+  checkInByQr: async (qrCode: string): Promise<Attendance> => {
+    const response = await api.post(`/attandance/qr/checkin/${qrCode}`);
+    return response.data;
+  },
+
+  checkOutByQr: async (qrCode: string): Promise<Attendance> => {
+    const response = await api.post(`/attandance/qr/checkout/${qrCode}`);
     return response.data;
   },
 
@@ -49,6 +59,26 @@ export const attendanceService = {
     const response = await api.get(`/attandance/recent/${employeeId}`, {
       params: { limit },
     });
+    return response.data;
+  },
+
+  getAllRecords: async (): Promise<Attendance[]> => {
+    const response = await api.get('/attandance/all');
+    return response.data;
+  },
+
+  getRecordsByDate: async (date: string): Promise<Attendance[]> => {
+    const response = await api.get(`/attandance/date/${date}`);
+    return response.data;
+  },
+
+  searchRecords: async (params: {
+    employeeId?: number;
+    employeeName?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<Attendance[]> => {
+    const response = await api.get('/attandance/search', { params });
     return response.data;
   },
 

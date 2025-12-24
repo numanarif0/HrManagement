@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { employeeService } from '../services/employeeService';
 import './Auth.css';
 
 function Register() {
-  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     firstname: '',
     lastname: '',
@@ -34,24 +33,52 @@ function Register() {
 
     try {
       await employeeService.register(formData);
-      setSuccess('Kayıt başarılı! Giriş sayfasına yönlendiriliyorsunuz...');
-      setTimeout(() => navigate('/login'), 2000);
+      setSuccess('✅ Başvurunuz başarıyla alındı! İnsan Kaynakları departmanı başvurunuzu inceleyecek. Onaylandığında sisteme giriş yapabilirsiniz.');
+      setFormData({
+        firstname: '',
+        lastname: '',
+        position: '',
+        department: '',
+        email: '',
+        phoneNumber: '',
+        password: '',
+        tcNo: '',
+      });
     } catch (err) {
-      setError('Kayıt başarısız. Lütfen bilgilerinizi kontrol edin.');
+      setError('Başvuru gönderilemedi. Lütfen bilgilerinizi kontrol edin veya bu email/TC ile daha önce başvuru yapılmış olabilir.');
     } finally {
       setLoading(false);
     }
   };
 
-  const departments = ['İnsan Kaynakları', 'Yazılım', 'Muhasebe', 'Pazarlama', 'Satış', 'Operasyon'];
-  const positions = ['Stajyer', 'Junior', 'Mid-Level', 'Senior', 'Takım Lideri', 'Müdür', 'Direktör'];
+  const departments = ['Bilgi Teknolojileri', 'Finans', 'Pazarlama', 'Satış', 'Operasyon', 'Müşteri Hizmetleri', 'Ar-Ge', 'Üretim', 'Lojistik'];
+  const positions = ['Stajyer', 'Junior', 'Mid-Level', 'Senior', 'Uzman', 'Takım Lideri'];
+
+  if (success) {
+    return (
+      <div className="auth-container">
+        <div className="auth-card">
+          <div className="auth-header">
+            <h1>📝 İş Başvurusu</h1>
+          </div>
+          <div className="success-container">
+            <div className="success-icon">✅</div>
+            <p className="success-message-large">{success}</p>
+            <Link to="/login" className="btn-primary auth-btn">
+              Giriş Sayfasına Dön
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="auth-container">
       <div className="auth-card register-card">
         <div className="auth-header">
-          <h1>HR Management</h1>
-          <p>Yeni hesap oluşturun</p>
+          <h1>📝 İş Başvurusu</h1>
+          <p>Şirketimize katılmak için başvuru formu</p>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
@@ -99,7 +126,7 @@ function Register() {
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="department">Departman</label>
+              <label htmlFor="department">Başvurulan Departman</label>
               <select
                 id="department"
                 name="department"
@@ -115,7 +142,7 @@ function Register() {
             </div>
 
             <div className="form-group">
-              <label htmlFor="position">Pozisyon</label>
+              <label htmlFor="position">Başvurulan Pozisyon</label>
               <select
                 id="position"
                 name="position"
@@ -139,7 +166,7 @@ function Register() {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder="ornek@sirket.com"
+              placeholder="ornek@email.com"
               required
             />
           </div>
@@ -158,7 +185,7 @@ function Register() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">Şifre</label>
+            <label htmlFor="password">Şifre (Onaylandığında kullanacağınız)</label>
             <input
               type="password"
               id="password"
@@ -172,16 +199,19 @@ function Register() {
           </div>
 
           {error && <p className="error-message">{error}</p>}
-          {success && <p className="success-message">{success}</p>}
 
           <button type="submit" className="btn-primary auth-btn" disabled={loading}>
-            {loading ? 'Kayıt yapılıyor...' : 'Kayıt Ol'}
+            {loading ? 'Başvuru gönderiliyor...' : '📤 Başvuru Gönder'}
           </button>
+
+          <div className="info-box">
+            <p>ℹ️ Başvurunuz İnsan Kaynakları tarafından incelendikten sonra onaylanacaktır.</p>
+          </div>
         </form>
 
         <div className="auth-footer">
           <p>
-            Zaten hesabınız var mı? <Link to="/login">Giriş Yap</Link>
+            Zaten çalışan mısınız? <Link to="/login">Giriş Yap</Link>
           </p>
         </div>
       </div>

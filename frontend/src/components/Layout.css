@@ -11,6 +11,7 @@
   flex-direction: column;
   position: fixed;
   height: 100vh;
+  overflow-y: auto;
 }
 
 .sidebar-header {
@@ -37,9 +38,35 @@
   letter-spacing: 1px;
 }
 
+.user-qr {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: monospace;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
 .nav-menu {
   flex: 1;
   padding: 20px 0;
+  overflow-y: auto;
+}
+
+.nav-divider {
+  padding: 15px 20px 10px;
+  margin-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-divider span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 600;
 }
 
 .nav-item {
@@ -70,6 +97,8 @@
 .sidebar-footer {
   padding: 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #1a252f 0%, #151d24 100%);
 }
 
 .logout-btn {
@@ -81,10 +110,25 @@
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .logout-btn:hover {
-  background: rgba(220, 53, 69, 0.3);
+  background: rgba(220, 53, 69, 0.4);
+  transform: scale(1.02);
+}
+
+.logout-nav-btn {
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: #ff6b7a !important;
+}
+
+.logout-nav-btn:hover {
+  background: rgba(220, 53, 69, 0.15) !important;
 }
 
 .main-content {

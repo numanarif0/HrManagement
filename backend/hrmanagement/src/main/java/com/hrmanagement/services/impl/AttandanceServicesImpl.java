@@ -227,6 +227,104 @@ public class AttandanceServicesImpl implements IAttandanceServices{
     }
 
     @Override
+    public List<DtoAttandance> getAllRecords() {
+        List<Attendance> records = attandanceRepository.findAllByOrderByDateDesc();
+        List<DtoAttandance> result = new ArrayList<>();
+        for (Attendance record : records) {
+            DtoAttandance dto = convertToDto(record);
+            // Çalışan bilgisini de ekle
+            if (record.getEmployee() != null) {
+                dto.setEmployeeName(record.getEmployee().getFirstname() + " " + record.getEmployee().getLastname());
+            }
+            result.add(dto);
+        }
+        return result;
+    }
+
+    @Override
+    public List<DtoAttandance> getAllRecordsByDate(String date) {
+        LocalDate targetDate = LocalDate.parse(date);
+        List<Attendance> records = attandanceRepository.findByDateOrderByCheckInTimeDesc(targetDate);
+        List<DtoAttandance> result = new ArrayList<>();
+        for (Attendance record : records) {
+            DtoAttandance dto = convertToDto(record);
+            if (record.getEmployee() != null) {
+                dto.setEmployeeName(record.getEmployee().getFirstname() + " " + record.getEmployee().getLastname());
+            }
+            result.add(dto);
+        }
+        return result;
+    }
+
+    @Override
+    public DtoAttandance checkInByQr(String qrCode) {
+        Employees employee = employeesRepository.findFirstByQrCode(qrCode)
+                .orElseThrow(() -> new RuntimeException("Geçersiz QR kod!"));
+        
+        LocalDate today = LocalDate.now();
+        Optional<Attendance> existingRecord = attandanceRepository
+                .findByEmployeeIdAndDate(employee.getId(), today);
+
+        if (existingRecord.isPresent()) {
+            throw new RuntimeException("Bugün için zaten giriş yapılmış!");
+        }
+
+        Attendance attendance = new Attendance();
+        attendance.setEmployee(employee);
+        attendance.setDate(today);
+        attendance.setCheckInTime(LocalTime.now());
+        attendance.setStatus("PRESENT");
+        attendance.setHoursWorked(0.0);
+
+        Attendance savedAttendance = attandanceRepository.save(attendance);
+        
+        // Giriş sonrası QR kodunu yenile
+        employee.setQrCode(generateNewQrCode());
+        employeesRepository.save(employee);
+        
+        DtoAttandance dto = convertToDto(savedAttendance);
+        dto.setEmployeeName(employee.getFirstname() + " " + employee.getLastname());
+        dto.setNewQrCode(employee.getQrCode()); // Yeni QR kodunu döndür
+        return dto;
+    }
+
+    @Override
+    public DtoAttandance checkOutByQr(String qrCode) {
+        Employees employee = employeesRepository.findFirstByQrCode(qrCode)
+                .orElseThrow(() -> new RuntimeException("Geçersiz QR kod!"));
+        
+        LocalDate today = LocalDate.now();
+        Attendance attendance = attandanceRepository
+                .findByEmployeeIdAndDate(employee.getId(), today)
+                .orElseThrow(() -> new RuntimeException("Bugün için giriş kaydı bulunamadı!"));
+
+        if (attendance.getCheckOutTime() != null) {
+            throw new RuntimeException("Bugün için zaten çıkış yapılmış!");
+        }
+
+        attendance.setCheckOutTime(LocalTime.now());
+        
+        long seconds = Duration.between(attendance.getCheckInTime(), attendance.getCheckOutTime()).toSeconds();
+        double hours = seconds / 3600.0;
+        attendance.setHoursWorked(hours);
+
+        Attendance savedAttendance = attandanceRepository.save(attendance);
+        
+        // Çıkış sonrası QR kodunu yenile
+        employee.setQrCode(generateNewQrCode());
+        employeesRepository.save(employee);
+        
+        DtoAttandance dto = convertToDto(savedAttendance);
+        dto.setEmployeeName(employee.getFirstname() + " " + employee.getLastname());
+        dto.setNewQrCode(employee.getQrCode()); // Yeni QR kodunu döndür
+        return dto;
+    }
+    
+    private String generateNewQrCode() {
+        return "QR-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+
+    @Override
     public DtoAttandance updateRecord(Long id, DtoAttandance dtoAttandance) {
         Attendance attendance = attandanceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Kayıt bulunamadı!"));
@@ -255,5 +353,49 @@ public class AttandanceServicesImpl implements IAttandanceServices{
     @Override
     public void deleteRecord(Long id) {
         attandanceRepository.deleteById(id);
+    }
+
+    @Override
+    public List<DtoAttandance> searchRecords(Long employeeId, String employeeName, String startDate, String endDate) {
+        List<Attendance> allRecords = attandanceRepository.findAllByOrderByDateDesc();
+        List<DtoAttandance> result = new ArrayList<>();
+
+        LocalDate start = (startDate != null && !startDate.isEmpty()) ? LocalDate.parse(startDate) : null;
+        LocalDate end = (endDate != null && !endDate.isEmpty()) ? LocalDate.parse(endDate) : null;
+
+        for (Attendance attendance : allRecords) {
+            boolean matches = true;
+
+            // Employee ID filtresi
+            if (employeeId != null && !attendance.getEmployee().getId().equals(employeeId)) {
+                matches = false;
+            }
+
+            // İsim filtresi (büyük/küçük harf duyarsız)
+            if (matches && employeeName != null && !employeeName.isEmpty()) {
+                String fullName = attendance.getEmployee().getFirstname() + " " + attendance.getEmployee().getLastname();
+                if (!fullName.toLowerCase().contains(employeeName.toLowerCase())) {
+                    matches = false;
+                }
+            }
+
+            // Başlangıç tarihi filtresi
+            if (matches && start != null && attendance.getDate().isBefore(start)) {
+                matches = false;
+            }
+
+            // Bitiş tarihi filtresi
+            if (matches && end != null && attendance.getDate().isAfter(end)) {
+                matches = false;
+            }
+
+            if (matches) {
+                DtoAttandance dto = convertToDto(attendance);
+                dto.setEmployeeName(attendance.getEmployee().getFirstname() + " " + attendance.getEmployee().getLastname());
+                result.add(dto);
+            }
+        }
+
+        return result;
     }
 }

@@ -1,19 +1,29 @@
 import { useState, useEffect } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Employee, Attendance as AttendanceType } from '../types';
 import { attendanceService } from '../services/attendanceService';
+import { employeeService } from '../services/employeeService';
 import './Attendance.css';
 
 interface AttendanceProps {
   employee: Employee | null;
+  onQrUpdate?: (newQrCode: string) => void;
 }
 
-function Attendance({ employee }: AttendanceProps) {
+function Attendance({ employee, onQrUpdate }: AttendanceProps) {
   const [recentRecords, setRecentRecords] = useState<AttendanceType[]>([]);
+  const [allRecords, setAllRecords] = useState<AttendanceType[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [activeTab, setActiveTab] = useState<'my' | 'hr'>('my');
+  const [currentQrCode, setCurrentQrCode] = useState(employee?.qrCode || '');
+  const [qrCountdown, setQrCountdown] = useState(180);
 
-  // Form state
+  // Form state for HR adding records
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | undefined>(undefined);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [checkInTime, setCheckInTime] = useState('09:00');
   const [checkOutTime, setCheckOutTime] = useState('18:00');
@@ -23,6 +33,92 @@ function Attendance({ employee }: AttendanceProps) {
   const [editDate, setEditDate] = useState('');
   const [editCheckIn, setEditCheckIn] = useState('');
   const [editCheckOut, setEditCheckOut] = useState('');
+
+  // Filter state for HR
+  const [filterName, setFilterName] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+  const [filterEmployeeId, setFilterEmployeeId] = useState<number | undefined>(undefined);
+
+  const isHR = employee?.department === 'İnsan Kaynakları' || employee?.role === 'HR' || employee?.role === 'ADMIN';
+
+  // Kalan süreyi hesapla (3 dakika = 180 saniye)
+  const calculateRemainingTime = () => {
+    const lastRefresh = localStorage.getItem('qrLastRefresh');
+    if (lastRefresh) {
+      const elapsed = Math.floor((Date.now() - parseInt(lastRefresh)) / 1000);
+      const remaining = 180 - (elapsed % 180);
+      return remaining > 0 ? remaining : 180;
+    }
+    return 180;
+  };
+
+  // QR kodunu her dakika yenile
+  useEffect(() => {
+    if (!employee?.id) return;
+
+    // İlk yüklemede kalan süreyi hesapla
+    const initialRemaining = calculateRemainingTime();
+    setQrCountdown(initialRemaining);
+
+    const refreshQrCode = async () => {
+      try {
+        const updatedEmployee = await employeeService.regenerateQrCode(employee.id!);
+        if (updatedEmployee.qrCode) {
+          setCurrentQrCode(updatedEmployee.qrCode);
+          onQrUpdate?.(updatedEmployee.qrCode);
+          localStorage.setItem('qrLastRefresh', Date.now().toString());
+        }
+      } catch (err) {
+        console.log('QR kod yenilenemedi', err);
+      }
+    };
+
+    // Backend'den güncel QR kodunu al (sayfa açıldığında)
+    const fetchCurrentQr = async () => {
+      try {
+        const currentEmployee = await employeeService.getById(employee.id!);
+        if (currentEmployee.qrCode) {
+          setCurrentQrCode(currentEmployee.qrCode);
+          onQrUpdate?.(currentEmployee.qrCode);
+        }
+      } catch (err) {
+        console.log('Güncel QR alınamadı', err);
+      }
+    };
+
+    // Sayfa açıldığında güncel QR'ı al
+    fetchCurrentQr();
+
+    // İlk yükleme: eğer localStorage'da kayıt yoksa başlat
+    if (!localStorage.getItem('qrLastRefresh')) {
+      localStorage.setItem('qrLastRefresh', Date.now().toString());
+    }
+
+    // Her 3 dakika backend'den güncel QR'ı al (backend zaten yeniliyor)
+    const qrTimer = setInterval(() => {
+      fetchCurrentQr();
+      setQrCountdown(180);
+      localStorage.setItem('qrLastRefresh', Date.now().toString());
+    }, 180000);
+
+    // Geri sayım
+    const countdownTimer = setInterval(() => {
+      setQrCountdown((prev) => (prev > 0 ? prev - 1 : 180));
+    }, 1000);
+
+    return () => {
+      clearInterval(qrTimer);
+      clearInterval(countdownTimer);
+    };
+  }, [employee?.id, onQrUpdate]);
+
+  // Employee QR değiştiğinde güncelle
+  useEffect(() => {
+    if (employee?.qrCode) {
+      setCurrentQrCode(employee.qrCode);
+    }
+  }, [employee?.qrCode]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -34,6 +130,24 @@ function Attendance({ employee }: AttendanceProps) {
       loadRecentRecords();
     }
   }, [employee?.id]);
+
+  useEffect(() => {
+    if (isHR) {
+      loadEmployees();
+      if (activeTab === 'hr') {
+        loadAllRecords();
+      }
+    }
+  }, [activeTab, isHR]);
+
+  const loadEmployees = async () => {
+    try {
+      const data = await employeeService.getApproved();
+      setEmployees(data);
+    } catch (err) {
+      console.log('Çalışanlar yüklenemedi', err);
+    }
+  };
 
   const loadRecentRecords = async () => {
     if (!employee?.id) return;
@@ -49,14 +163,46 @@ function Attendance({ employee }: AttendanceProps) {
     }
   };
 
-  const handleSaveRecord = async () => {
-    if (!employee?.id) {
-      setMessage('Çalışan bilgisi bulunamadı.');
+  const loadAllRecords = async () => {
+    setLoading(true);
+    try {
+      const data = await attendanceService.searchRecords({
+        employeeId: filterEmployeeId,
+        employeeName: filterName || undefined,
+        startDate: filterStartDate || undefined,
+        endDate: filterEndDate || undefined
+      });
+      setAllRecords(data || []);
+    } catch (err) {
+      console.log('Kayıtlar yüklenemedi', err);
+      setAllRecords([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = () => {
+    loadAllRecords();
+  };
+
+  const clearFilters = () => {
+    setFilterName('');
+    setFilterStartDate('');
+    setFilterEndDate('');
+    setFilterEmployeeId(undefined);
+  };
+
+  // İK için çalışana kayıt ekleme
+  const handleAddRecordForEmployee = async () => {
+    if (!selectedEmployeeId) {
+      setMessage('Lütfen bir çalışan seçin.');
+      setMessageType('error');
       return;
     }
 
     if (!checkInTime || !checkOutTime) {
       setMessage('Giriş ve çıkış saatlerini giriniz.');
+      setMessageType('error');
       return;
     }
 
@@ -65,19 +211,22 @@ function Attendance({ employee }: AttendanceProps) {
 
     try {
       await attendanceService.saveRecord({
-        employeeId: employee.id,
+        employeeId: selectedEmployeeId,
         date: selectedDate,
         checkInTime: checkInTime + ':00',
         checkOutTime: checkOutTime + ':00'
       });
-      setMessage('Kayıt başarıyla eklendi!');
-      loadRecentRecords();
+      setMessage('✅ Kayıt başarıyla eklendi!');
+      setMessageType('success');
+      loadAllRecords();
       // Formu sıfırla
+      setSelectedEmployeeId(undefined);
       setSelectedDate(new Date().toISOString().split('T')[0]);
       setCheckInTime('09:00');
       setCheckOutTime('18:00');
     } catch {
       setMessage('Kayıt eklenemedi. Lütfen tekrar deneyin.');
+      setMessageType('error');
     } finally {
       setLoading(false);
     }
@@ -100,11 +249,17 @@ function Attendance({ employee }: AttendanceProps) {
         checkInTime: editCheckIn + ':00',
         checkOutTime: editCheckOut + ':00'
       });
-      setMessage('Kayıt güncellendi!');
+      setMessage('✅ Kayıt güncellendi!');
+      setMessageType('success');
       setEditingRecord(null);
-      loadRecentRecords();
+      if (activeTab === 'hr') {
+        loadAllRecords();
+      } else {
+        loadRecentRecords();
+      }
     } catch {
       setMessage('Güncelleme başarısız.');
+      setMessageType('error');
     } finally {
       setLoading(false);
     }
@@ -116,10 +271,16 @@ function Attendance({ employee }: AttendanceProps) {
     setLoading(true);
     try {
       await attendanceService.deleteRecord(id);
-      setMessage('Kayıt silindi!');
-      loadRecentRecords();
+      setMessage('✅ Kayıt silindi!');
+      setMessageType('success');
+      if (activeTab === 'hr') {
+        loadAllRecords();
+      } else {
+        loadRecentRecords();
+      }
     } catch {
       setMessage('Silme başarısız.');
+      setMessageType('error');
     } finally {
       setLoading(false);
     }
@@ -170,138 +331,329 @@ function Attendance({ employee }: AttendanceProps) {
     })
     .reduce((sum, r) => sum + (r.hoursWorked || 0), 0);
 
+  // Bugün giriş yapıldı mı kontrol et
+  const todayRecord = recentRecords.find(r => r.date === new Date().toISOString().split('T')[0]);
+
   return (
     <div className="attendance">
       <div className="page-header">
         <h1>⏰ Devam Takibi</h1>
-        <p>Giriş ve çıkış saatlerinizi kaydedin</p>
+        <p>{isHR ? 'Çalışan giriş/çıkış kayıtlarını yönetin' : 'Giriş ve çıkış kayıtlarınızı görüntüleyin'}</p>
       </div>
 
-      {/* Üst Kartlar */}
-      <div className="attendance-stats">
-        <div className="stat-card time-stat">
-          <div className="stat-icon">🕐</div>
-          <div className="stat-content">
-            <span className="stat-value">{timeDisplay}</span>
-            <span className="stat-label">{today}</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">📊</div>
-          <div className="stat-content">
-            <span className="stat-value">{recentRecords.length}</span>
-            <span className="stat-label">Toplam Kayıt</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">⏱️</div>
-          <div className="stat-content">
-            <span className="stat-value">{formatHours(weeklyTotal)}</span>
-            <span className="stat-label">Bu Hafta</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Yeni Kayıt Formu */}
-      <div className="card form-card">
-        <h2>➕ Yeni Kayıt Ekle</h2>
-        
-        <div className="form-grid">
-          <div className="form-group">
-            <label>📅 Tarih</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-            />
-          </div>
-          <div className="form-group">
-            <label>🟢 Giriş Saati</label>
-            <input
-              type="time"
-              value={checkInTime}
-              onChange={(e) => setCheckInTime(e.target.value)}
-            />
-          </div>
-          <div className="form-group">
-            <label>🔴 Çıkış Saati</label>
-            <input
-              type="time"
-              value={checkOutTime}
-              onChange={(e) => setCheckOutTime(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="form-actions">
-          <button onClick={handleSaveRecord} className="btn-save" disabled={loading}>
-            {loading ? '⏳ Kaydediliyor...' : '💾 Kaydet'}
+      {/* Tab Navigation for HR */}
+      {isHR && (
+        <div className="tab-navigation">
+          <button 
+            className={`tab-btn ${activeTab === 'my' ? 'active' : ''}`}
+            onClick={() => setActiveTab('my')}
+          >
+            👤 Benim Kayıtlarım
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === 'hr' ? 'active' : ''}`}
+            onClick={() => setActiveTab('hr')}
+          >
+            📊 Tüm Kayıtlar (İK)
           </button>
         </div>
+      )}
 
-        {message && (
-          <div className={`message ${message.includes('başarı') ? 'success' : 'error'}`}>
-            {message}
-          </div>
-        )}
-      </div>
+      {/* Message */}
+      {message && (
+        <div className={`message ${messageType}`}>
+          {message}
+        </div>
+      )}
 
-      {/* Son Kayıtlar */}
-      <div className="card records-card">
-        <h2>📋 Son 10 Kayıt</h2>
-        
-        {loading && recentRecords.length === 0 ? (
-          <div className="empty-state">
-            <span className="empty-icon">⏳</span>
-            <p>Yükleniyor...</p>
+      {activeTab === 'my' && (
+        <>
+          {/* Üst Kartlar */}
+          <div className="attendance-stats">
+            <div className="stat-card time-stat">
+              <div className="stat-icon">🕐</div>
+              <div className="stat-content">
+                <span className="stat-value">{timeDisplay}</span>
+                <span className="stat-label">{today}</span>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon">📊</div>
+              <div className="stat-content">
+                <span className="stat-value">{recentRecords.length}</span>
+                <span className="stat-label">Toplam Kayıt</span>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon">⏱️</div>
+              <div className="stat-content">
+                <span className="stat-value">{formatHours(weeklyTotal)}</span>
+                <span className="stat-label">Bu Hafta</span>
+              </div>
+            </div>
           </div>
-        ) : recentRecords.length === 0 ? (
-          <div className="empty-state">
-            <span className="empty-icon">📭</span>
-            <p>Henüz kayıt bulunmuyor</p>
-          </div>
-        ) : (
-          <div className="records-list">
-            {recentRecords.map((record) => (
-              <div key={record.id} className="record-item">
-                <div className="record-date">
-                  <span className="date-day">{formatDate(record.date)}</span>
+
+          {/* Bugünkü Durum */}
+          {todayRecord && (
+            <div className="card today-card">
+              <h2>📅 Bugünkü Kayıt</h2>
+              <div className="today-info">
+                <div className="today-time-block">
+                  <span className="label">Giriş</span>
+                  <span className="value success">{formatTime(todayRecord.checkInTime)}</span>
                 </div>
-                <div className="record-times">
-                  <div className="time-block">
-                    <span className="time-label">Giriş</span>
-                    <span className="time-value in">{formatTime(record.checkInTime)}</span>
+                <div className="today-separator">→</div>
+                <div className="today-time-block">
+                  <span className="label">Çıkış</span>
+                  <span className="value danger">{formatTime(todayRecord.checkOutTime)}</span>
+                </div>
+                {todayRecord.hoursWorked && (
+                  <div className="today-hours">
+                    <span className="label">Süre</span>
+                    <span className="value">{formatHours(todayRecord.hoursWorked)}</span>
                   </div>
-                  <div className="time-separator">→</div>
-                  <div className="time-block">
-                    <span className="time-label">Çıkış</span>
-                    <span className="time-value out">{formatTime(record.checkOutTime)}</span>
-                  </div>
-                </div>
-                <div className="record-hours">
-                  <span className="hours-value">{formatHours(record.hoursWorked)}</span>
-                </div>
-                <div className="record-actions">
-                  <button 
-                    onClick={() => openEditModal(record)} 
-                    className="btn-icon-only edit"
-                    title="Düzenle"
-                  >
-                    ✏️
-                  </button>
-                  <button 
-                    onClick={() => record.id && handleDelete(record.id)} 
-                    className="btn-icon-only delete"
-                    title="Sil"
-                  >
-                    🗑️
-                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* QR Kod Kartı */}
+          {currentQrCode && (
+            <div className="card qr-code-card">
+              <h2>📱 QR Kodunuz</h2>
+              <p>QR tarayıcı cihazına bu kodu okutarak giriş/çıkış yapabilirsiniz</p>
+              
+              <div className="qr-display">
+                <QRCodeSVG 
+                  value={currentQrCode} 
+                  size={200}
+                  level="H"
+                  includeMargin={true}
+                  style={{ background: 'white', padding: '10px', borderRadius: '8px' }}
+                />
+                <div className="qr-code-text">{currentQrCode}</div>
+                <div className="qr-countdown">
+                  <span className="countdown-icon">🔄</span>
+                  <span>Yeni kod: {Math.floor(qrCountdown / 60)}:{(qrCountdown % 60).toString().padStart(2, '0')}</span>
                 </div>
               </div>
-            ))}
+            </div>
+          )}
+
+          {/* Son Kayıtlar */}
+          <div className="card records-card">
+            <h2>📋 Son 10 Kayıt</h2>
+            
+            {loading && recentRecords.length === 0 ? (
+              <div className="empty-state">
+                <span className="empty-icon">⏳</span>
+                <p>Yükleniyor...</p>
+              </div>
+            ) : recentRecords.length === 0 ? (
+              <div className="empty-state">
+                <span className="empty-icon">📭</span>
+                <p>Henüz kayıt bulunmuyor</p>
+                <p className="empty-hint">QR kodunuzu taratarak giriş/çıkış yapabilirsiniz.</p>
+              </div>
+            ) : (
+              <div className="records-list">
+                {recentRecords.map((record) => (
+                  <div key={record.id} className="record-item">
+                    <div className="record-date">
+                      <span className="date-day">{formatDate(record.date)}</span>
+                    </div>
+                    <div className="record-times">
+                      <div className="time-block">
+                        <span className="time-label">Giriş</span>
+                        <span className="time-value in">{formatTime(record.checkInTime)}</span>
+                      </div>
+                      <div className="time-separator">→</div>
+                      <div className="time-block">
+                        <span className="time-label">Çıkış</span>
+                        <span className="time-value out">{formatTime(record.checkOutTime)}</span>
+                      </div>
+                    </div>
+                    <div className="record-hours">
+                      <span className="hours-value">{formatHours(record.hoursWorked)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
+
+      {/* HR Tab - Tüm Kayıtlar ve Kayıt Ekleme */}
+      {activeTab === 'hr' && isHR && (
+        <>
+          {/* Çalışan için Kayıt Ekleme Formu */}
+          <div className="card form-card">
+            <h2>➕ Çalışan İçin Kayıt Ekle</h2>
+            <p className="form-subtitle">Bir çalışan seçerek giriş/çıkış kaydı ekleyebilirsiniz</p>
+            
+            <div className="form-grid-hr">
+              <div className="form-group">
+                <label>👤 Çalışan</label>
+                <select
+                  value={selectedEmployeeId || ''}
+                  onChange={(e) => setSelectedEmployeeId(e.target.value ? Number(e.target.value) : undefined)}
+                >
+                  <option value="">-- Çalışan Seçin --</option>
+                  {employees.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.firstname} {emp.lastname} - {emp.department}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>📅 Tarih</label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label>🟢 Giriş Saati</label>
+                <input
+                  type="time"
+                  value={checkInTime}
+                  onChange={(e) => setCheckInTime(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label>🔴 Çıkış Saati</label>
+                <input
+                  type="time"
+                  value={checkOutTime}
+                  onChange={(e) => setCheckOutTime(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="form-actions">
+              <button onClick={handleAddRecordForEmployee} className="btn-save" disabled={loading}>
+                {loading ? '⏳ Kaydediliyor...' : '💾 Kayıt Ekle'}
+              </button>
+            </div>
+          </div>
+
+          {/* Filtre ve Kayıtlar */}
+          <div className="card hr-filter-card">
+            <h2>🔍 Kayıtları Filtrele</h2>
+            <p className="form-subtitle">Herhangi bir alanı doldurup arama yapabilirsiniz</p>
+            <div className="filter-grid">
+              <div className="form-group">
+                <label>👤 Çalışan Seç</label>
+                <select
+                  value={filterEmployeeId || ''}
+                  onChange={(e) => setFilterEmployeeId(e.target.value ? Number(e.target.value) : undefined)}
+                >
+                  <option value="">-- Tümü --</option>
+                  {employees.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.firstname} {emp.lastname}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>🔤 İsim Ara</label>
+                <input
+                  type="text"
+                  placeholder="Ad veya soyad..."
+                  value={filterName}
+                  onChange={(e) => setFilterName(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label>📅 Başlangıç Tarihi</label>
+                <input
+                  type="date"
+                  value={filterStartDate}
+                  onChange={(e) => setFilterStartDate(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label>📅 Bitiş Tarihi</label>
+                <input
+                  type="date"
+                  value={filterEndDate}
+                  onChange={(e) => setFilterEndDate(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="filter-actions">
+              <button onClick={handleSearch} className="btn-search">
+                🔍 Ara
+              </button>
+              <button onClick={clearFilters} className="btn-clear">
+                🗑️ Temizle
+              </button>
+            </div>
+          </div>
+
+          <div className="card records-card">
+            <h2>📊 Devam Kayıtları ({allRecords.length} sonuç)</h2>
+            
+            {loading ? (
+              <div className="empty-state">
+                <span className="empty-icon">⏳</span>
+                <p>Yükleniyor...</p>
+              </div>
+            ) : allRecords.length === 0 ? (
+              <div className="empty-state">
+                <span className="empty-icon">📭</span>
+                <p>Bu tarihte kayıt bulunmuyor</p>
+              </div>
+            ) : (
+              <div className="hr-records-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Çalışan</th>
+                      <th>Tarih</th>
+                      <th>Giriş</th>
+                      <th>Çıkış</th>
+                      <th>Süre</th>
+                      <th>İşlemler</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allRecords.map((record) => (
+                      <tr key={record.id}>
+                        <td>{record.employeeName || `ID: ${record.employeeId}`}</td>
+                        <td>{formatDate(record.date)}</td>
+                        <td className="time-in">{formatTime(record.checkInTime)}</td>
+                        <td className="time-out">{formatTime(record.checkOutTime)}</td>
+                        <td>{formatHours(record.hoursWorked)}</td>
+                        <td>
+                          <button 
+                            onClick={() => openEditModal(record)} 
+                            className="btn-icon-only edit"
+                            title="Düzenle"
+                          >
+                            ✏️
+                          </button>
+                          <button 
+                            onClick={() => record.id && handleDelete(record.id)} 
+                            className="btn-icon-only delete"
+                            title="Sil"
+                          >
+                            🗑️
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Edit Modal */}
       {editingRecord && (
@@ -312,6 +664,11 @@ function Attendance({ employee }: AttendanceProps) {
               <button className="modal-close" onClick={() => setEditingRecord(null)}>✕</button>
             </div>
             <div className="modal-body">
+              {editingRecord.employeeName && (
+                <div className="edit-info">
+                  <strong>Çalışan:</strong> {editingRecord.employeeName}
+                </div>
+              )}
               <div className="form-group">
                 <label>📅 Tarih</label>
                 <input

@@ -1,5 +1,6 @@
 package com.hrmanagement.entities;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -7,6 +8,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
@@ -24,6 +27,13 @@ import lombok.NoArgsConstructor;
 @Table(name = "employees")
 public class Employees {
 
+    public enum Role {
+        EMPLOYEE, HR, ADMIN
+    }
+
+    public enum Status {
+        PENDING, APPROVED, REJECTED
+    }
 
     @Id
     @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
@@ -35,7 +45,7 @@ public class Employees {
     @Column(name = "last_name", nullable = false)
     private String lastname;
 
-    @Column(name = "tc_no", nullable = false, length =11, unique = true)
+    @Column(name = "tc_no", nullable = false, length = 11, unique = true)
     private String tcNo;
 
     @Column(name = "position", nullable = false)
@@ -53,16 +63,36 @@ public class Employees {
     @Column(name = "password", nullable = false)
     private String password;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false)
+    private Role role = Role.EMPLOYEE;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private Status status = Status.PENDING;
+
+    @Column(name = "qr_code", unique = true)
+    private String qrCode;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    @Column(name = "approved_by")
+    private Long approvedBy;
+
     @JsonIgnore
-    @OneToOne(mappedBy = "employee", cascade = CascadeType.ALL,fetch = FetchType.LAZY)
+    @OneToOne(mappedBy = "employee", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Payroll payroll;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL,fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Attendance> attendance;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL,fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Reviews> reviews;
     
 }

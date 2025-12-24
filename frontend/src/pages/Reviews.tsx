@@ -17,6 +17,9 @@ function Reviews({ employee }: ReviewsProps) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
+  // İK kontrolü
+  const isHR = employee?.department === 'İnsan Kaynakları' || employee?.role === 'HR' || employee?.role === 'ADMIN';
+
   const [formData, setFormData] = useState<ReviewIU>({
     reviewerName: employee?.firstname + ' ' + employee?.lastname || '',
     comments: '',
@@ -41,7 +44,7 @@ function Reviews({ employee }: ReviewsProps) {
 
   const loadEmployees = async () => {
     try {
-      const data = await employeeService.getAll();
+      const data = await employeeService.getApproved();
       setEmployees(data);
     } catch {
       console.error('Çalışanlar yüklenemedi');
@@ -102,6 +105,12 @@ function Reviews({ employee }: ReviewsProps) {
   };
 
   const handleEdit = (review: Review) => {
+    // Sadece İK veya kendi değerlendirmesini düzenleyebilir
+    if (!isHR && review.reviewerId !== employee?.id) {
+      setMessage('Bu değerlendirmeyi düzenleme yetkiniz yok.');
+      return;
+    }
+    
     setFormData({
       id: review.id,
       reviewerName: review.reviewerName,
@@ -114,7 +123,13 @@ function Reviews({ employee }: ReviewsProps) {
     setShowForm(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number, reviewerId?: number) => {
+    // Sadece İK veya kendi değerlendirmesini silebilir
+    if (!isHR && reviewerId !== employee?.id) {
+      setMessage('Bu değerlendirmeyi silme yetkiniz yok.');
+      return;
+    }
+    
     if (!window.confirm('Bu değerlendirmeyi silmek istediğinizden emin misiniz?')) return;
 
     setLoading(true);
@@ -163,11 +178,16 @@ function Reviews({ employee }: ReviewsProps) {
     return emp ? `${emp.firstname} ${emp.lastname}` : 'Bilinmiyor';
   };
 
+  // Bir değerlendirmeyi düzenleme/silme yetkisi var mı?
+  const canEditReview = (review: Review) => {
+    return isHR || review.reviewerId === employee?.id;
+  };
+
   return (
     <div className="reviews">
       <div className="page-header">
-        <h1>Performans Değerlendirmeleri</h1>
-        <p>Çalışan değerlendirmelerini yönetin</p>
+        <h1>⭐ Performans Değerlendirmeleri</h1>
+        <p>Çalışan değerlendirmelerini görüntüleyin ve yeni değerlendirme ekleyin</p>
       </div>
 
       {/* Çalışan Seçimi */}
@@ -338,17 +358,19 @@ function Reviews({ employee }: ReviewsProps) {
                       </div>
                     </div>
                     <p className="review-comments">{review.comments}</p>
-                    <div className="review-actions">
-                      <button onClick={() => handleEdit(review)} className="btn-warning btn-sm">
-                        ✏️ Düzenle
-                      </button>
-                      <button
-                        onClick={() => review.id && handleDelete(review.id)}
-                        className="btn-danger btn-sm"
-                      >
-                        🗑️ Sil
-                      </button>
-                    </div>
+                    {canEditReview(review) && (
+                      <div className="review-actions">
+                        <button onClick={() => handleEdit(review)} className="btn-warning btn-sm">
+                          ✏️ Düzenle
+                        </button>
+                        <button
+                          onClick={() => review.id && handleDelete(review.id, review.reviewerId)}
+                          className="btn-danger btn-sm"
+                        >
+                          🗑️ Sil
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
