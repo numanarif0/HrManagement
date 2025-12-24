@@ -8,17 +8,20 @@ interface LayoutProps {
 }
 
 function Layout({ employee, onLogout }: LayoutProps) {
-  const isHR = employee?.department === 'İnsan Kaynakları';
+  const isHR = employee?.department === 'İnsan Kaynakları' || employee?.role === 'HR' || employee?.role === 'ADMIN';
 
   return (
     <div className="layout">
       <aside className="sidebar">
         <div className="sidebar-header">
-          <h2>HR System</h2>
+          <h2>🏢 HR System</h2>
           <p className="user-info">
             {employee?.firstname} {employee?.lastname}
           </p>
-          <span className="user-role">{employee?.position}</span>
+          <span className="user-role">{employee?.department} - {employee?.position}</span>
+          {employee?.qrCode && (
+            <span className="user-qr">QR: {employee.qrCode}</span>
+          )}
         </div>
         
         <nav className="nav-menu">
@@ -28,7 +31,7 @@ function Layout({ employee, onLogout }: LayoutProps) {
           </NavLink>
           <NavLink to="/attendance" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
             <span className="nav-icon">⏰</span>
-            Devam Takibi
+            Devam Takibim
           </NavLink>
           <NavLink to="/payroll" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
             <span className="nav-icon">💰</span>
@@ -38,12 +41,34 @@ function Layout({ employee, onLogout }: LayoutProps) {
             <span className="nav-icon">⭐</span>
             Değerlendirmeler
           </NavLink>
+          
           {isHR && (
-            <NavLink to="/employees" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-              <span className="nav-icon">👥</span>
-              Çalışan Yönetimi
-            </NavLink>
+            <>
+              <div className="nav-divider">
+                <span>İK Yönetimi</span>
+              </div>
+              <NavLink to="/pending-applications" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+                <span className="nav-icon">📋</span>
+                Onay Bekleyenler
+              </NavLink>
+              <NavLink to="/employees" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+                <span className="nav-icon">👥</span>
+                Çalışan Yönetimi
+              </NavLink>
+              <NavLink to="/qr-scanner" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+                <span className="nav-icon">📱</span>
+                QR Tarayıcı
+              </NavLink>
+            </>
           )}
+
+          <div className="nav-divider">
+            <span>Hesap</span>
+          </div>
+          <button onClick={onLogout} className="nav-item logout-nav-btn">
+            <span className="nav-icon">🚪</span>
+            Oturumu Kapat
+          </button>
         </nav>
 
         <div className="sidebar-footer">

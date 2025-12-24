@@ -39,5 +39,7 @@ public class Reviews {
     @ManyToOne(fetch = FetchType.LAZY)
     private Employees employee;
 
+    @Column(name = "reviewer_id")
+    private Long reviewerId;
 
 }

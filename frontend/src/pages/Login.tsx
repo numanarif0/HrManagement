@@ -31,10 +31,16 @@ function Login({ onLogin }: LoginProps) {
 
     try {
       const employee = await employeeService.login(formData);
-      onLogin(employee);
-      navigate('/dashboard');
+      if (employee) {
+        // Giriş yapıldığında QR süresini sıfırla
+        localStorage.setItem('qrLastRefresh', Date.now().toString());
+        onLogin(employee);
+        navigate('/dashboard');
+      } else {
+        setError('Giriş başarısız. Hesabınız henüz onaylanmamış olabilir veya bilgileriniz hatalı.');
+      }
     } catch (err) {
-      setError('Giriş başarısız. Email veya şifre hatalı.');
+      setError('Giriş başarısız. Email veya şifre hatalı ya da hesabınız henüz onaylanmamış.');
     } finally {
       setLoading(false);
     }
@@ -44,8 +50,8 @@ function Login({ onLogin }: LoginProps) {
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
-          <h1>HR Management</h1>
-          <p>Hesabınıza giriş yapın</p>
+          <h1>🏢 HR Management</h1>
+          <p>İnsan Kaynakları Yönetim Sistemi</p>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
@@ -84,7 +90,10 @@ function Login({ onLogin }: LoginProps) {
 
         <div className="auth-footer">
           <p>
-            Hesabınız yok mu? <Link to="/register">Kayıt Ol</Link>
+            Şirkette yeni misiniz? <Link to="/register">İş Başvurusu Yap</Link>
+          </p>
+          <p className="auth-note">
+            ⚠️ Başvurunuz İK tarafından onaylandıktan sonra sisteme giriş yapabilirsiniz.
           </p>
         </div>
       </div>

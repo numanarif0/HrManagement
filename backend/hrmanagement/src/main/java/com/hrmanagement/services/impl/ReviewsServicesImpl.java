@@ -3,7 +3,6 @@ package com.hrmanagement.services.impl;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import com.hrmanagement.dto.DtoReviews;
@@ -44,6 +43,7 @@ public class ReviewsServicesImpl implements IReviewsServices{
         reviews.setRating(dtoReviews.getRating());
         reviews.setEmployee(employee);
         reviews.setReviewDate(java.time.LocalDate.now());
+        reviews.setReviewerId(dtoReviews.getReviewerId());
         
         Reviews savedReviews = reviewsRepository.save(reviews);
         
@@ -54,6 +54,7 @@ public class ReviewsServicesImpl implements IReviewsServices{
         dtoReviewsResponse.setComments(savedReviews.getComments());
         dtoReviewsResponse.setRating(savedReviews.getRating());
         dtoReviewsResponse.setEmployeeId(savedReviews.getEmployee().getId());
+        dtoReviewsResponse.setReviewerId(savedReviews.getReviewerId());
         
         return dtoReviewsResponse;
     }
@@ -77,6 +78,7 @@ public class ReviewsServicesImpl implements IReviewsServices{
         dtoReviewsResponse.setComments(updatedReviews.getComments());
         dtoReviewsResponse.setRating(updatedReviews.getRating());
         dtoReviewsResponse.setEmployeeId(updatedReviews.getEmployee().getId());
+        dtoReviewsResponse.setReviewerId(updatedReviews.getReviewerId());
         
         return dtoReviewsResponse;
     }
@@ -101,6 +103,7 @@ public class ReviewsServicesImpl implements IReviewsServices{
             dto.setComments(review.getComments());
             dto.setRating(review.getRating());
             dto.setEmployeeId(review.getEmployee().getId());
+            dto.setReviewerId(review.getReviewerId());
             dtoReviewsList.add(dto);
         }
         

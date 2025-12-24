@@ -9,6 +9,12 @@ export interface Employee {
   phoneNumber: string;
   password?: string;
   tcNo: string;
+  role?: 'EMPLOYEE' | 'HR' | 'ADMIN';
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  qrCode?: string;
+  createdAt?: string;
+  approvedAt?: string;
+  approvedBy?: number;
 }
 
 // Attendance Types
@@ -19,7 +25,9 @@ export interface Attendance {
   checkOutTime?: string;
   hoursWorked?: number;
   employeeId: number;
+  employeeName?: string;
   status?: string;
+  newQrCode?: string; // Giriş/çıkış sonrası yeni QR kodu
 }
 
 // Payroll Types
@@ -59,6 +67,7 @@ export interface Review {
   comments: string;
   rating: number;
   employeeId?: number;
+  reviewerId?: number;
 }
 
 export interface ReviewIU {
