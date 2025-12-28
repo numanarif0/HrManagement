@@ -145,8 +145,25 @@ public class PayrollServicesImpl implements IPayrollServices {
 
     @Override
     @Transactional
-    public void deletePayroll(Long id) {
-        System.out.println("deletePayroll çağrıldı, id: " + id);
+    public void deletePayroll(Long id, Long requesterId) {
+        System.out.println("deletePayroll çağrıldı, id: " + id + ", requesterId: " + requesterId);
+
+        // GÜVENLİK: Yetki kontrolü - sadece HR/ADMIN silebilir
+        if (requesterId == null) {
+            throw new IllegalArgumentException("Yetki hatası: requesterId gerekli");
+        }
+
+        Employees requester = employeesRepository.findById(requesterId)
+            .orElseThrow(() -> new IllegalArgumentException("Yetki hatası: Kullanıcı bulunamadı"));
+
+        boolean isHR = "İnsan Kaynakları".equals(requester.getDepartment()) ||
+                       Employees.Role.HR.equals(requester.getRole()) ||
+                       Employees.Role.ADMIN.equals(requester.getRole());
+
+        if (!isHR) {
+            throw new IllegalArgumentException("Yetki hatası: Bordro silme yetkisi sadece İK/Admin'e aittir");
+        }
+
         if (!payrolRepository.existsById(id)) {
             System.out.println("Payroll bulunamadı: " + id);
             throw new IllegalArgumentException("Payroll bulunamadı: " + id);

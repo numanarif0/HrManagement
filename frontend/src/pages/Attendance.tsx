@@ -240,7 +240,7 @@ function Attendance({ employee, onQrUpdate }: AttendanceProps) {
   };
 
   const handleUpdate = async () => {
-    if (!editingRecord?.id) return;
+    if (!editingRecord?.id || !employee?.id) return;
 
     setLoading(true);
     try {
@@ -248,7 +248,7 @@ function Attendance({ employee, onQrUpdate }: AttendanceProps) {
         date: editDate,
         checkInTime: editCheckIn + ':00',
         checkOutTime: editCheckOut + ':00'
-      });
+      }, employee.id);
       setMessage('✅ Kayıt güncellendi!');
       setMessageType('success');
       setEditingRecord(null);
@@ -266,11 +266,12 @@ function Attendance({ employee, onQrUpdate }: AttendanceProps) {
   };
 
   const handleDelete = async (id: number) => {
+    if (!employee?.id) return;
     if (!window.confirm('Bu kaydı silmek istediğinize emin misiniz?')) return;
 
     setLoading(true);
     try {
-      await attendanceService.deleteRecord(id);
+      await attendanceService.deleteRecord(id, employee.id);
       setMessage('✅ Kayıt silindi!');
       setMessageType('success');
       if (activeTab === 'hr') {
@@ -301,11 +302,46 @@ function Attendance({ employee, onQrUpdate }: AttendanceProps) {
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
-    return date.toLocaleDateString('tr-TR', { 
-      day: '2-digit', 
+    return date.toLocaleDateString('tr-TR', {
+      day: '2-digit',
       month: 'short',
       weekday: 'short'
     });
+  };
+
+  // HR icin kendi giris/cikis islemleri
+  const handleSelfCheckIn = async () => {
+    if (!employee?.id) return;
+    setLoading(true);
+    setMessage('');
+    try {
+      await attendanceService.checkIn(employee.id);
+      setMessage('Giris basarili!');
+      setMessageType('success');
+      loadRecentRecords();
+    } catch (err: any) {
+      setMessage(err.response?.data?.message || 'Giris yapilamadi.');
+      setMessageType('error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSelfCheckOut = async () => {
+    if (!employee?.id) return;
+    setLoading(true);
+    setMessage('');
+    try {
+      await attendanceService.checkOut(employee.id);
+      setMessage('Cikis basarili!');
+      setMessageType('success');
+      loadRecentRecords();
+    } catch (err: any) {
+      setMessage(err.response?.data?.message || 'Cikis yapilamadi.');
+      setMessageType('error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const today = currentTime.toLocaleDateString('tr-TR', {
@@ -420,8 +456,12 @@ function Attendance({ employee, onQrUpdate }: AttendanceProps) {
           {/* QR Kod Kartı */}
           {currentQrCode && (
             <div className="card qr-code-card">
-              <h2>📱 QR Kodunuz</h2>
-              <p>QR tarayıcı cihazına bu kodu okutarak giriş/çıkış yapabilirsiniz</p>
+              <h2>QR Kodunuz</h2>
+              <p>Sirket girisindeki kiosk terminalinde bu kodu okutarak giris/cikis yapabilirsiniz.</p>
+              <div className="kiosk-info-box">
+                <span className="info-icon">i</span>
+                <span>QR Tarama adresi: <strong>/qrScan</strong></span>
+              </div>
               
               <div className="qr-display">
                 <QRCodeSVG 
@@ -433,10 +473,33 @@ function Attendance({ employee, onQrUpdate }: AttendanceProps) {
                 />
                 <div className="qr-code-text">{currentQrCode}</div>
                 <div className="qr-countdown">
-                  <span className="countdown-icon">🔄</span>
+                  <span className="countdown-icon">~</span>
                   <span>Yeni kod: {Math.floor(qrCountdown / 60)}:{(qrCountdown % 60).toString().padStart(2, '0')}</span>
                 </div>
               </div>
+
+              {/* HR icin hizli giris/cikis */}
+              {isHR && (
+                <div className="hr-quick-actions">
+                  <p className="quick-action-label">Hizli Islem (IK Yetkisi):</p>
+                  <div className="quick-action-buttons">
+                    <button
+                      onClick={handleSelfCheckIn}
+                      className="btn-checkin"
+                      disabled={loading || !!todayRecord?.checkInTime}
+                    >
+                      {todayRecord?.checkInTime ? 'Giris Yapildi' : 'Giris Yap'}
+                    </button>
+                    <button
+                      onClick={handleSelfCheckOut}
+                      className="btn-checkout"
+                      disabled={loading || !todayRecord?.checkInTime || !!todayRecord?.checkOutTime}
+                    >
+                      {todayRecord?.checkOutTime ? 'Cikis Yapildi' : 'Cikis Yap'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

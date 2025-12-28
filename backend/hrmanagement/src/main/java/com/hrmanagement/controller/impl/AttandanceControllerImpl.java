@@ -103,14 +103,14 @@ public class AttandanceControllerImpl implements IAttandanceController {
 
     @Override
     @PutMapping(path = "/{id}")
-    public DtoAttandance updateRecord(@PathVariable Long id, @RequestBody DtoAttandance dtoAttandance) {
-        return iAttandanceServices.updateRecord(id, dtoAttandance);
+    public DtoAttandance updateRecord(@PathVariable Long id, @RequestBody DtoAttandance dtoAttandance, @RequestParam Long requesterId) {
+        return iAttandanceServices.updateRecord(id, dtoAttandance, requesterId);
     }
 
     @Override
     @DeleteMapping(path = "/{id}")
-    public void deleteRecord(@PathVariable Long id) {
-        iAttandanceServices.deleteRecord(id);
+    public void deleteRecord(@PathVariable Long id, @RequestParam Long requesterId) {
+        iAttandanceServices.deleteRecord(id, requesterId);
     }
 
     @Override

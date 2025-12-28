@@ -12,6 +12,9 @@ function Payroll({ employee }: PayrollProps) {
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
 
+  // HR/Admin kontrolu
+  const isHR = employee?.department === 'İnsan Kaynakları' || employee?.role === 'HR' || employee?.role === 'ADMIN';
+
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [payrollData, setPayrollData] = useState<PayrollType | null>(null);
@@ -203,8 +206,8 @@ function Payroll({ employee }: PayrollProps) {
     setError('');
 
     try {
-      console.log('API çağrısı yapılıyor:', `/payroll/${payrollId}`);
-      await payrollService.delete(payrollId);
+      console.log('API çağrısı yapılıyor:', `/payroll/${payrollId}`, 'requesterId:', employee?.id);
+      await payrollService.delete(payrollId, employee!.id);
       console.log('Silme başarılı!');
       setSuccessMessage('Bordro başarıyla silindi!');
       await loadPayrollHistory(); // Listeyi güncelle - await ekledik
@@ -231,9 +234,9 @@ function Payroll({ employee }: PayrollProps) {
         <p>Maaş ve bordro bilgilerinizi görüntüleyin</p>
       </div>
 
-      <div className="grid-2">
+      <div className={isHR ? "grid-2" : ""}>
         <div className="card">
-          <h2>🔍 Bordro Sorgula</h2>
+          <h2>Bordro Sorgula</h2>
           
           <div className="form-row">
             <div className="form-group">
@@ -273,8 +276,9 @@ function Payroll({ employee }: PayrollProps) {
           {successMessage && <p className="success-message">{successMessage}</p>}
         </div>
 
+        {isHR && (
         <div className="card">
-          <h2>➕ Bordro Oluştur</h2>
+          <h2>Bordro Olustur (IK)</h2>
 
           <div className="form-row">
             <div className="form-group">
@@ -397,9 +401,10 @@ function Payroll({ employee }: PayrollProps) {
           </div>
 
           <button onClick={handleGeneratePayroll} className="btn-success" disabled={loading}>
-            {loading ? 'İşleniyor...' : 'Bordro Oluştur'}
+            {loading ? 'Isleniyor...' : 'Bordro Olustur'}
           </button>
         </div>
+        )}
       </div>
 
       {payrollData && (
@@ -492,13 +497,15 @@ function Payroll({ employee }: PayrollProps) {
                   <td className="negative">-{formatCurrency(payroll.deductions)}</td>
                   <td className="positive">{formatCurrency(payroll.netSalary)}</td>
                   <td>
-                    <button 
-                      className="btn-danger btn-small" 
+                    {isHR && (
+                    <button
+                      className="btn-danger btn-small"
                       onClick={() => handleDeletePayroll(payroll.id)}
                       disabled={loading}
                     >
-                      🗑️ Sil
+                      Sil
                     </button>
+                    )}
                   </td>
                 </tr>
               ))}

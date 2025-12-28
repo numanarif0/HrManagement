@@ -134,7 +134,7 @@ function Reviews({ employee }: ReviewsProps) {
 
     setLoading(true);
     try {
-      await reviewService.delete(id);
+      await reviewService.delete(id, employee!.id);
       setReviews(reviews.filter((r) => r.id !== id));
       setMessage('Değerlendirme silindi!');
     } catch {

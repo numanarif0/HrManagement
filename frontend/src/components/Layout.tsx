@@ -42,6 +42,7 @@ function Layout({ employee, onLogout }: LayoutProps) {
             Değerlendirmeler
           </NavLink>
           
+
           {isHR && (
             <>
               <div className="nav-divider">
@@ -55,12 +56,13 @@ function Layout({ employee, onLogout }: LayoutProps) {
                 <span className="nav-icon">👥</span>
                 Çalışan Yönetimi
               </NavLink>
-              <NavLink to="/qr-scanner" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-                <span className="nav-icon">📱</span>
-                QR Tarayıcı
-              </NavLink>
             </>
           )}
+
+          <NavLink to="/qr-scanner" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+            <span className="nav-icon">📱</span>
+            QR Tarayıcı
+          </NavLink>
 
           <div className="nav-divider">
             <span>Hesap</span>

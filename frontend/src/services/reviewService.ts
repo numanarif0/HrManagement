@@ -12,8 +12,8 @@ export const reviewService = {
     return response.data;
   },
 
-  delete: async (id: number): Promise<void> => {
-    await api.delete(`/reviews/delete/${id}`);
+  delete: async (id: number, requesterId: number): Promise<void> => {
+    await api.delete(`/reviews/delete/${id}`, { params: { requesterId } });
   },
 
   getByEmployeeId: async (employeeId: number): Promise<Review[]> => {

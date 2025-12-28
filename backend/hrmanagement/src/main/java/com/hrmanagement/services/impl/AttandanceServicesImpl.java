@@ -325,10 +325,26 @@ public class AttandanceServicesImpl implements IAttandanceServices{
     }
 
     @Override
-    public DtoAttandance updateRecord(Long id, DtoAttandance dtoAttandance) {
+    public DtoAttandance updateRecord(Long id, DtoAttandance dtoAttandance, Long requesterId) {
+        // GÜVENLİK: Yetki kontrolü - sadece HR/ADMIN güncelleyebilir
+        if (requesterId == null) {
+            throw new RuntimeException("Yetki hatası: requesterId gerekli");
+        }
+
+        Employees requester = employeesRepository.findById(requesterId)
+                .orElseThrow(() -> new RuntimeException("Yetki hatası: Kullanıcı bulunamadı"));
+
+        boolean isHR = "İnsan Kaynakları".equals(requester.getDepartment()) ||
+                       Employees.Role.HR.equals(requester.getRole()) ||
+                       Employees.Role.ADMIN.equals(requester.getRole());
+
+        if (!isHR) {
+            throw new RuntimeException("Yetki hatası: Devam kaydı güncelleme yetkisi sadece İK/Admin'e aittir");
+        }
+
         Attendance attendance = attandanceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Kayıt bulunamadı!"));
-        
+
         if (dtoAttandance.getDate() != null) {
             attendance.setDate(dtoAttandance.getDate());
         }
@@ -338,20 +354,36 @@ public class AttandanceServicesImpl implements IAttandanceServices{
         if (dtoAttandance.getCheckOutTime() != null) {
             attendance.setCheckOutTime(dtoAttandance.getCheckOutTime());
         }
-        
+
         // Çalışma saatini yeniden hesapla
         if (attendance.getCheckInTime() != null && attendance.getCheckOutTime() != null) {
             long seconds = Duration.between(attendance.getCheckInTime(), attendance.getCheckOutTime()).toSeconds();
             double hours = seconds / 3600.0;
             attendance.setHoursWorked(hours);
         }
-        
+
         Attendance saved = attandanceRepository.save(attendance);
         return convertToDto(saved);
     }
 
     @Override
-    public void deleteRecord(Long id) {
+    public void deleteRecord(Long id, Long requesterId) {
+        // GÜVENLİK: Yetki kontrolü - sadece HR/ADMIN silebilir
+        if (requesterId == null) {
+            throw new RuntimeException("Yetki hatası: requesterId gerekli");
+        }
+
+        Employees requester = employeesRepository.findById(requesterId)
+                .orElseThrow(() -> new RuntimeException("Yetki hatası: Kullanıcı bulunamadı"));
+
+        boolean isHR = "İnsan Kaynakları".equals(requester.getDepartment()) ||
+                       Employees.Role.HR.equals(requester.getRole()) ||
+                       Employees.Role.ADMIN.equals(requester.getRole());
+
+        if (!isHR) {
+            throw new RuntimeException("Yetki hatası: Devam kaydı silme yetkisi sadece İK/Admin'e aittir");
+        }
+
         attandanceRepository.deleteById(id);
     }
 

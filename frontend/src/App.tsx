@@ -5,6 +5,7 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Attendance from './pages/Attendance'
 import QrScanner from './pages/QrScanner'
+import Kiosk from './pages/Kiosk'
 import Payroll from './pages/Payroll'
 import Reviews from './pages/Reviews'
 import Employees from './pages/Employees'
@@ -43,6 +44,9 @@ function App() {
   return (
     <Router>
       <Routes>
+        {/* QR Tarama Terminali - Login gerektirmez */}
+        <Route path="/qrScan" element={<Kiosk />} />
+
         <Route path="/login" element={
           employee ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />
         } />

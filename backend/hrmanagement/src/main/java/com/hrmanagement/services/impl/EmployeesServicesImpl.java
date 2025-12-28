@@ -132,10 +132,8 @@ public class EmployeesServicesImpl implements IEmployeesServices {
             employee.setPhoneNumber(dtoEmployees.getPhoneNumber());
             employee.setTcNo(dtoEmployees.getTcNo());
 
-            // Role güncelleme
-            if (dtoEmployees.getRole() != null) {
-                employee.setRole(Role.valueOf(dtoEmployees.getRole()));
-            }
+            // GÜVENLİK: Role değiştirme devre dışı - sadece veritabanından değiştirilebilir
+            // Kullanıcıların kendi rollerini değiştirmesi engellendi
 
             // Şifre değiştirilmek isteniyorsa güncelle
             if (dtoEmployees.getPassword() != null && !dtoEmployees.getPassword().isEmpty()) {
