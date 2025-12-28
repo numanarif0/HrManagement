@@ -61,9 +61,9 @@ public class PayrollControllerImpl implements IPayrollController {
 
     @Override
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePayroll(@PathVariable Long id) {
-        System.out.println("deletePayroll controller id=" + id);
-        payrollServices.deletePayroll(id);
+    public ResponseEntity<Void> deletePayroll(@PathVariable Long id, @RequestParam Long requesterId) {
+        System.out.println("deletePayroll controller id=" + id + ", requesterId=" + requesterId);
+        payrollServices.deletePayroll(id, requesterId);
         return ResponseEntity.noContent().build();
     }
 }

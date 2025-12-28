@@ -40,14 +40,18 @@ function Employees({ employee }: EmployeesProps) {
     }
   };
 
-  // HR departmanı kontrolü
-  if (employee?.department !== 'İnsan Kaynakları') {
+  // HR/Admin kontrolu - Layout.tsx ile tutarli
+  const isHR = employee?.department === 'İnsan Kaynakları' ||
+               employee?.role === 'HR' ||
+               employee?.role === 'ADMIN';
+
+  if (!isHR) {
     return (
       <div className="employees-page">
         <div className="access-denied">
-          <span className="denied-icon">🚫</span>
+          <span className="denied-icon">X</span>
           <h2>Erişim Engellendi</h2>
-          <p>Bu sayfaya yalnızca İnsan Kaynakları departmanı çalışanları erişebilir.</p>
+          <p>Bu sayfaya yalnızca İnsan Kaynakları veya Admin yetkisine sahip çalışanlar erişebilir.</p>
         </div>
       </div>
     );

@@ -82,12 +82,12 @@ export const attendanceService = {
     return response.data;
   },
 
-  updateRecord: async (id: number, data: Partial<Attendance>): Promise<Attendance> => {
-    const response = await api.put(`/attandance/${id}`, data);
+  updateRecord: async (id: number, data: Partial<Attendance>, requesterId: number): Promise<Attendance> => {
+    const response = await api.put(`/attandance/${id}`, data, { params: { requesterId } });
     return response.data;
   },
 
-  deleteRecord: async (id: number): Promise<void> => {
-    await api.delete(`/attandance/${id}`);
+  deleteRecord: async (id: number, requesterId: number): Promise<void> => {
+    await api.delete(`/attandance/${id}`, { params: { requesterId } });
   },
 };

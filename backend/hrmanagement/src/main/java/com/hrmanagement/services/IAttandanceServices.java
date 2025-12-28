@@ -19,6 +19,6 @@ public interface IAttandanceServices {
     public List<DtoAttandance> getAllRecords();
     public List<DtoAttandance> getAllRecordsByDate(String date);
     public List<DtoAttandance> searchRecords(Long employeeId, String employeeName, String startDate, String endDate);
-    public DtoAttandance updateRecord(Long id, DtoAttandance dtoAttandance);
-    public void deleteRecord(Long id);
+    public DtoAttandance updateRecord(Long id, DtoAttandance dtoAttandance, Long requesterId);
+    public void deleteRecord(Long id, Long requesterId);
 }

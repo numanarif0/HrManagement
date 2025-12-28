@@ -29,7 +29,7 @@ export const payrollService = {
     return response.data;
   },
 
-  delete: async (id: number): Promise<void> => {
-    await api.delete(`/payroll/${id}`);
+  delete: async (id: number, requesterId: number): Promise<void> => {
+    await api.delete(`/payroll/${id}`, { params: { requesterId } });
   },
 };

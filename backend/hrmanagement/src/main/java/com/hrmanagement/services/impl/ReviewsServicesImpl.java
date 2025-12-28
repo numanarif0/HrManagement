@@ -84,9 +84,28 @@ public class ReviewsServicesImpl implements IReviewsServices{
     }
 
     @Override
-    public void deleteReviews(Long id){
+    public void deleteReviews(Long id, Long requesterId){
+        // GÜVENLİK: Yetki kontrolü
+        if (requesterId == null) {
+            throw new RuntimeException("Yetki hatası: requesterId gerekli");
+        }
+
         Reviews reviews = reviewsRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Reviews not found with id: " + id));
+
+        Employees requester = employeesRepository.findById(requesterId)
+                .orElseThrow(() -> new RuntimeException("Yetki hatası: Kullanıcı bulunamadı"));
+
+        boolean isHR = "İnsan Kaynakları".equals(requester.getDepartment()) ||
+                       Employees.Role.HR.equals(requester.getRole()) ||
+                       Employees.Role.ADMIN.equals(requester.getRole());
+
+        boolean isOwner = requesterId.equals(reviews.getReviewerId());
+
+        if (!isHR && !isOwner) {
+            throw new RuntimeException("Yetki hatası: Bu değerlendirmeyi silme yetkiniz yok");
+        }
+
         reviewsRepository.delete(reviews);
     }
 
