@@ -108,10 +108,6 @@ function Dashboard({ employee }: DashboardProps) {
               <span className="action-icon">⭐</span>
               <span>Değerlendirmeler</span>
             </Link>
-            <Link to="/qr-scanner" className="action-btn">
-              <span className="action-icon">📱</span>
-              <span>QR Tarayıcı</span>
-            </Link>
           </div>
         </div>
       </div>
