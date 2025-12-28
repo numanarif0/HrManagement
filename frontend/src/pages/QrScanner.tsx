@@ -21,7 +21,7 @@ function QrScanner({ employee }: QrScannerProps) {
   const processingRef = useRef(false); // Prevent multiple calls
   const scannerActiveRef = useRef(false); // Track scanner state
 
-  const isHR = employee?.department === 'İnsan Kaynakları' || employee?.role === 'HR' || employee?.role === 'ADMIN';
+
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -166,18 +166,7 @@ function QrScanner({ employee }: QrScannerProps) {
     year: 'numeric',
   });
 
-  if (!isHR) {
-    return (
-      <div className="qr-scanner-page">
-        <div className="access-denied-card">
-          <span className="denied-icon">🚫</span>
-          <h2>Erişim Engellendi</h2>
-          <p>Bu sayfa sadece İnsan Kaynakları tarafından kullanılabilir.</p>
-          <p className="hint">QR tarayıcı terminali olarak kullanılmak üzere tasarlanmıştır.</p>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <div className="qr-scanner-page">
