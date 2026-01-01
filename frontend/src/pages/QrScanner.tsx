@@ -18,10 +18,8 @@ function QrScanner({ employee }: QrScannerProps) {
   const [manualQrCode, setManualQrCode] = useState('');
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const scannerContainerRef = useRef<HTMLDivElement>(null);
-  const processingRef = useRef(false); // Prevent multiple calls
-  const scannerActiveRef = useRef(false); // Track scanner state
-
-
+  const processingRef = useRef(false);
+  const scannerActiveRef = useRef(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -30,7 +28,6 @@ function QrScanner({ employee }: QrScannerProps) {
 
   useEffect(() => {
     return () => {
-      // Cleanup on unmount
       if (html5QrCodeRef.current) {
         try {
           html5QrCodeRef.current.stop().then(() => {
@@ -44,28 +41,21 @@ function QrScanner({ employee }: QrScannerProps) {
   }, []);
 
   const startScanner = async () => {
-    if (!scannerContainerRef.current) return;
-    if (scannerActiveRef.current) return; // Already running
-
+    if (!scannerContainerRef.current || scannerActiveRef.current) return;
     try {
       html5QrCodeRef.current = new Html5Qrcode('qr-reader');
-      
       await html5QrCodeRef.current.start(
         { facingMode: 'environment' },
-        {
-          fps: 5, // Reduced fps to prevent too many scans
-          qrbox: { width: 250, height: 250 },
-        },
+        { fps: 5, qrbox: { width: 250, height: 250 } },
         onScanSuccess,
-        () => {} // Ignore scan errors
+        () => {}
       );
-      
       scannerActiveRef.current = true;
       setScanning(true);
       setMessage('');
     } catch (err) {
-      console.error('Kamera başlatılamadı:', err);
-      setMessage('Kamera erişimi sağlanamadı. Lütfen kamera iznini kontrol edin.');
+      console.error('Kamera baslatilamadi:', err);
+      setMessage('Kamera erisimi saglanamadi. Lutfen kamera iznini kontrol edin.');
       setMessageType('error');
     }
   };
@@ -79,8 +69,7 @@ function QrScanner({ employee }: QrScannerProps) {
         scannerActiveRef.current = false;
         setScanning(false);
       } catch (err) {
-        console.error('Tarayıcı durdurulurken hata:', err);
-        // Force reset
+        console.error('Tarayici durdurulurken hata:', err);
         html5QrCodeRef.current = null;
         scannerActiveRef.current = false;
         setScanning(false);
@@ -89,13 +78,8 @@ function QrScanner({ employee }: QrScannerProps) {
   };
 
   const onScanSuccess = async (decodedText: string) => {
-    // Prevent multiple simultaneous calls
-    if (processingRef.current) return;
-    if (!scannerActiveRef.current) return;
-    
+    if (processingRef.current || !scannerActiveRef.current) return;
     processingRef.current = true;
-
-    // Taramayı hemen durdur
     try {
       if (html5QrCodeRef.current) {
         await html5QrCodeRef.current.stop();
@@ -105,36 +89,29 @@ function QrScanner({ employee }: QrScannerProps) {
         setScanning(false);
       }
     } catch (err) {
-      console.error('Scanner durdurulamadı:', err);
+      console.error('Scanner durdurulamadi:', err);
     }
-    
-    // QR kodu ile giriş/çıkış işlemi yap
     await processQrCode(decodedText);
-    
     processingRef.current = false;
   };
 
   const processQrCode = async (qrCode: string) => {
     if (loading) return;
-
     setLoading(true);
     setMessage('');
-
     try {
-      // Önce giriş yapmayı dene
       const result = await attendanceService.checkInByQr(qrCode);
-      setMessage(`✅ Giriş başarılı! Hoş geldiniz ${result.employeeName || ''}`);
+      setMessage(`OK Giris basarili! Hos geldiniz ${result.employeeName || ''}`);
       setMessageType('success');
       setLastAction(result);
     } catch (checkInError: any) {
-      // Giriş başarısızsa çıkış yapmayı dene
       try {
         const result = await attendanceService.checkOutByQr(qrCode);
-        setMessage(`✅ Çıkış başarılı! Güle güle ${result.employeeName || ''}`);
+        setMessage(`OK Cikis basarili! Gule gule ${result.employeeName || ''}`);
         setMessageType('success');
         setLastAction(result);
       } catch (checkOutError: any) {
-        setMessage(checkOutError.response?.data?.message || checkInError.response?.data?.message || 'İşlem başarısız. QR kodu geçersiz olabilir.');
+        setMessage(checkOutError.response?.data?.message || checkInError.response?.data?.message || 'Islem basarisiz. QR kodu gecersiz olabilir.');
         setMessageType('error');
       }
     } finally {
@@ -146,7 +123,7 @@ function QrScanner({ employee }: QrScannerProps) {
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualQrCode.trim()) {
-      setMessage('Lütfen QR kodu girin.');
+      setMessage('Lutfen QR kodu girin.');
       setMessageType('error');
       return;
     }
@@ -166,35 +143,32 @@ function QrScanner({ employee }: QrScannerProps) {
     year: 'numeric',
   });
 
-
-
   return (
-    <div className="qr-scanner-page">
-      <div className="page-header">
-        <h1>📱 QR Tarayıcı</h1>
-        <p>Çalışan QR kodlarını tarayarak giriş/çıkış kaydı oluşturun</p>
+    <div className="qr-simple-wrapper">
+      <div className="qr-simple-header">
+        <div>
+          <p className="qr-chip">Herkese acik QR terminali</p>
+          <h1>QR Tarayici</h1>
+          <p className="qr-sub">Calisanlarin QR kodlarini tarayarak giris/cikis kaydi olusturun.</p>
+        </div>
+        <div className="qr-clock">
+          <span className="qr-time">{timeDisplay}</span>
+          <span className="qr-date">{dateDisplay}</span>
+        </div>
       </div>
 
-      {/* Saat Göstergesi */}
-      <div className="time-display-large">
-        <div className="time-value">{timeDisplay}</div>
-        <div className="date-value">{dateDisplay}</div>
-      </div>
-
-      {/* Message */}
       {message && (
         <div className={`qr-message-large ${messageType}`}>
           {message}
         </div>
       )}
 
-      {/* Son İşlem */}
       {lastAction && (
         <div className="card last-action-card">
-          <h3>📋 Son İşlem</h3>
+          <h3>Son Islem</h3>
           <div className="last-action-grid">
             <div className="action-detail">
-              <span className="label">Çalışan</span>
+              <span className="label">Calisan</span>
               <span className="value">{lastAction.employeeName}</span>
             </div>
             <div className="action-detail">
@@ -202,41 +176,36 @@ function QrScanner({ employee }: QrScannerProps) {
               <span className="value">{lastAction.date}</span>
             </div>
             <div className="action-detail">
-              <span className="label">Giriş</span>
+              <span className="label">Giris</span>
               <span className="value success">{lastAction.checkInTime?.substring(0, 5) || '-'}</span>
             </div>
             <div className="action-detail">
-              <span className="label">Çıkış</span>
+              <span className="label">Cikis</span>
               <span className="value danger">{lastAction.checkOutTime?.substring(0, 5) || '-'}</span>
             </div>
           </div>
         </div>
       )}
 
-      {/* QR Tarayıcı */}
       <div className="card scanner-card">
-        <h2>📷 Kamera ile Tara</h2>
-        
+        <h2>Kamera ile Tara</h2>
         <div id="qr-reader" ref={scannerContainerRef} className="qr-reader-container"></div>
-        
         <div className="scanner-controls">
           {!scanning ? (
             <button onClick={startScanner} className="btn-start-scan" disabled={loading}>
-              📷 Taramayı Başlat
+              Taramayi Baslat
             </button>
           ) : (
             <button onClick={stopScanner} className="btn-stop-scan">
-              ⏹️ Taramayı Durdur
+              Taramayi Durdur
             </button>
           )}
         </div>
       </div>
 
-      {/* Manuel QR Girişi */}
       <div className="card manual-card">
-        <h2>⌨️ Manuel QR Girişi</h2>
-        <p>Kamera çalışmazsa QR kodunu manuel olarak girebilirsiniz</p>
-        
+        <h2>Manuel QR Girisi</h2>
+        <p>Kamera calismazsa QR kodunu manuel olarak girebilirsiniz.</p>
         <form onSubmit={handleManualSubmit} className="manual-form">
           <input
             type="text"
@@ -247,238 +216,189 @@ function QrScanner({ employee }: QrScannerProps) {
             disabled={loading}
           />
           <button type="submit" className="btn-manual-submit" disabled={loading || !manualQrCode.trim()}>
-            {loading ? '⏳ İşleniyor...' : '✓ Gönder'}
+            {loading ? 'Isleniyor...' : 'Gonder'}
           </button>
         </form>
       </div>
 
       <style>{`
-        .qr-scanner-page {
-          max-width: 600px;
+        .qr-simple-wrapper {
+          max-width: 900px;
           margin: 0 auto;
-          padding: 1rem;
+          padding: 1.5rem 1rem 2rem;
         }
 
-        .time-display-large {
-          text-align: center;
-          margin: 1.5rem 0;
-          padding: 2rem;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border-radius: 16px;
-          color: white;
+        .qr-simple-header {
+          display: flex;
+          justify-content: space-between;
+          gap: 1rem;
+          align-items: center;
+          background: #f6f8fb;
+          border: 1px solid #e5e7eb;
+          border-radius: 14px;
+          padding: 1rem 1.25rem;
         }
 
-        .time-value {
-          font-size: 3.5rem;
-          font-weight: bold;
+        .qr-simple-header h1 {
+          margin: 4px 0;
+          font-size: 24px;
+          color: #0f172a;
+        }
+
+        .qr-sub {
+          margin: 0;
+          color: #4b5563;
+          font-size: 14px;
+        }
+
+        .qr-chip {
+          display: inline-block;
+          margin: 0;
+          padding: 4px 10px;
+          background: #eef2ff;
+          color: #4f46e5;
+          border-radius: 999px;
+          font-size: 12px;
+          border: 1px solid #e0e7ff;
+        }
+
+        .qr-clock {
+          text-align: right;
+        }
+
+        .qr-time {
+          display: block;
+          font-size: 26px;
+          font-weight: 700;
+          color: #111827;
           font-family: 'Courier New', monospace;
         }
 
-        .date-value {
-          font-size: 1.1rem;
-          opacity: 0.9;
-          margin-top: 0.5rem;
+        .qr-date {
+          display: block;
+          color: #6b7280;
+          font-size: 13px;
         }
 
         .qr-message-large {
-          padding: 1.5rem;
+          padding: 1.2rem;
           border-radius: 12px;
           text-align: center;
-          font-size: 1.3rem;
+          font-size: 1.15rem;
           font-weight: 600;
-          margin-bottom: 1.5rem;
+          margin: 1rem 0;
         }
 
         .qr-message-large.success {
-          background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+          background: #ecfdf3;
           color: #166534;
-          border: 2px solid #22c55e;
+          border: 1px solid #bbf7d0;
         }
 
         .qr-message-large.error {
-          background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+          background: #fef2f2;
           color: #991b1b;
-          border: 2px solid #ef4444;
+          border: 1px solid #fecaca;
         }
 
-        .last-action-card {
-          margin-bottom: 1.5rem;
+        .last-action-card, .scanner-card, .manual-card {
+          background: white;
+          border-radius: 14px;
+          border: 1px solid #e5e7eb;
+          box-shadow: 0 6px 24px rgba(0,0,0,0.05);
+          padding: 1.25rem;
+          margin-bottom: 1.25rem;
         }
 
         .last-action-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 1rem;
-          margin-top: 1rem;
+          gap: 0.75rem;
+          margin-top: 0.75rem;
         }
 
         .action-detail {
           display: flex;
           flex-direction: column;
-          padding: 0.75rem;
-          background: #f8f9fa;
+          padding: 0.65rem;
+          background: #f9fafb;
           border-radius: 8px;
         }
 
         .action-detail .label {
           font-size: 0.85rem;
-          color: #666;
+          color: #6b7280;
         }
 
         .action-detail .value {
-          font-size: 1.1rem;
+          font-size: 1.05rem;
           font-weight: 600;
-          color: #333;
+          color: #111827;
         }
 
-        .action-detail .value.success {
-          color: #22c55e;
-        }
+        .action-detail .value.success { color: #16a34a; }
+        .action-detail .value.danger { color: #dc2626; }
 
-        .action-detail .value.danger {
-          color: #ef4444;
-        }
-
-        .scanner-card {
-          text-align: center;
-          margin-bottom: 1.5rem;
-        }
+        .scanner-card h2, .manual-card h2 { margin: 0 0 0.75rem 0; }
 
         .qr-reader-container {
           width: 100%;
-          max-width: 400px;
-          margin: 1rem auto;
+          max-width: 420px;
+          margin: 0 auto;
           border-radius: 12px;
           overflow: hidden;
+          background: #0f172a;
         }
 
-        .scanner-controls {
-          margin-top: 1rem;
-        }
+        .scanner-controls { margin-top: 1rem; }
 
-        .btn-start-scan, .btn-stop-scan {
-          padding: 1rem 2rem;
-          font-size: 1.1rem;
+        .btn-start-scan, .btn-stop-scan, .btn-manual-submit {
+          padding: 0.9rem 1.4rem;
+          font-size: 1rem;
           font-weight: 600;
           border: none;
-          border-radius: 12px;
+          border-radius: 10px;
           cursor: pointer;
           transition: transform 0.2s;
         }
 
-        .btn-start-scan {
-          background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-          color: white;
-        }
-
-        .btn-stop-scan {
-          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-          color: white;
-        }
-
-        .btn-start-scan:hover, .btn-stop-scan:hover {
-          transform: scale(1.05);
-        }
-
-        .btn-start-scan:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        .manual-card {
-          text-align: center;
-        }
+        .btn-start-scan { background: linear-gradient(135deg, #22c55e, #16a34a); color: white; }
+        .btn-stop-scan { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+        .btn-start-scan:hover, .btn-stop-scan:hover, .btn-manual-submit:hover { transform: translateY(-1px); }
+        .btn-start-scan:disabled { opacity: 0.6; cursor: not-allowed; }
 
         .manual-form {
           display: flex;
-          gap: 1rem;
-          margin-top: 1rem;
-          justify-content: center;
+          gap: 0.75rem;
+          margin-top: 0.5rem;
+          align-items: center;
+          flex-wrap: wrap;
         }
 
         .manual-input {
           flex: 1;
-          max-width: 200px;
-          padding: 1rem;
-          font-size: 1.2rem;
+          min-width: 180px;
+          padding: 0.9rem;
+          font-size: 1.05rem;
           text-align: center;
-          border: 2px solid #ddd;
-          border-radius: 8px;
+          border: 1px solid #d1d5db;
+          border-radius: 10px;
           font-family: 'Courier New', monospace;
           text-transform: uppercase;
         }
 
-        .manual-input:focus {
-          border-color: #667eea;
-          outline: none;
-        }
+        .manual-input:focus { border-color: #4f46e5; outline: none; }
 
-        .btn-manual-submit {
-          padding: 1rem 1.5rem;
-          font-size: 1.1rem;
-          font-weight: 600;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          border: none;
-          border-radius: 8px;
-          cursor: pointer;
-          transition: transform 0.2s;
-        }
+        .btn-manual-submit { background: linear-gradient(135deg, #4f46e5, #6366f1); color: white; }
+        .btn-manual-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
-        .btn-manual-submit:hover:not(:disabled) {
-          transform: scale(1.05);
-        }
-
-        .btn-manual-submit:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        .access-denied-card {
-          text-align: center;
-          padding: 3rem;
-          background: white;
-          border-radius: 16px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-          margin-top: 2rem;
-        }
-
-        .denied-icon {
-          font-size: 4rem;
-        }
-
-        .access-denied-card h2 {
-          margin: 1rem 0 0.5rem;
-          color: #ef4444;
-        }
-
-        .access-denied-card p {
-          color: #666;
-        }
-
-        .access-denied-card .hint {
-          margin-top: 1rem;
-          font-size: 0.9rem;
-          color: #999;
-        }
-
-        @media (max-width: 480px) {
-          .time-value {
-            font-size: 2.5rem;
-          }
-
-          .manual-form {
-            flex-direction: column;
-            align-items: center;
-          }
-
-          .manual-input {
-            max-width: 100%;
-          }
-
-          .btn-manual-submit {
-            width: 100%;
-          }
+        @media (max-width: 640px) {
+          .qr-simple-header { flex-direction: column; align-items: flex-start; }
+          .qr-clock { text-align: left; }
+          .last-action-grid { grid-template-columns: 1fr; }
+          .manual-form { flex-direction: column; align-items: stretch; }
+          .manual-input { width: 100%; }
+          .btn-manual-submit { width: 100%; }
         }
       `}</style>
     </div>

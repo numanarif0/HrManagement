@@ -59,11 +59,6 @@ function Layout({ employee, onLogout }: LayoutProps) {
             </>
           )}
 
-          <NavLink to="/qr-scanner" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-            <span className="nav-icon">📱</span>
-            QR Tarayıcı
-          </NavLink>
-
           <div className="nav-divider">
             <span>Hesap</span>
           </div>

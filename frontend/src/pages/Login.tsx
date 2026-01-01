@@ -90,12 +90,16 @@ function Login({ onLogin }: LoginProps) {
 
         <div className="auth-footer">
           <p>
-            Şirkette yeni misiniz? <Link to="/register">İş Başvurusu Yap</Link>
+            Sirket'te yeni misiniz? <Link to="/register">Is Basvurusu Yap</Link>
           </p>
           <p className="auth-note">
-            ⚠️ Başvurunuz İK tarafından onaylandıktan sonra sisteme giriş yapabilirsiniz.
+            Basvurunuz IK tarafindan onaylandiktan sonra sisteme giris yapabilirsiniz.
+          </p>
+          <p className="auth-note">
+            QR terminalini giris yapmadan kullanabilirsiniz: <Link to="/qr">QR Tarayici</Link>
           </p>
         </div>
+
       </div>
     </div>
   );

@@ -315,9 +315,15 @@ function Attendance({ employee, onQrUpdate }: AttendanceProps) {
     setLoading(true);
     setMessage('');
     try {
-      await attendanceService.checkIn(employee.id);
+      const result = await attendanceService.checkIn(employee.id);
       setMessage('Giris basarili!');
       setMessageType('success');
+      // Optimistic: bugun kaydini aninda guncelle
+      setRecentRecords((prev) => {
+        const today = new Date().toISOString().split('T')[0];
+        const filtered = prev.filter((r) => r.date !== today);
+        return [{ ...result, date: today }, ...filtered];
+      });
       loadRecentRecords();
     } catch (err: any) {
       setMessage(err.response?.data?.message || 'Giris yapilamadi.');
@@ -332,9 +338,14 @@ function Attendance({ employee, onQrUpdate }: AttendanceProps) {
     setLoading(true);
     setMessage('');
     try {
-      await attendanceService.checkOut(employee.id);
+      const result = await attendanceService.checkOut(employee.id);
       setMessage('Cikis basarili!');
       setMessageType('success');
+      setRecentRecords((prev) => {
+        const today = new Date().toISOString().split('T')[0];
+        const filtered = prev.filter((r) => r.date !== today);
+        return [{ ...result, date: today }, ...filtered];
+      });
       loadRecentRecords();
     } catch (err: any) {
       setMessage(err.response?.data?.message || 'Cikis yapilamadi.');
@@ -460,7 +471,7 @@ function Attendance({ employee, onQrUpdate }: AttendanceProps) {
               <p>Sirket girisindeki kiosk terminalinde bu kodu okutarak giris/cikis yapabilirsiniz.</p>
               <div className="kiosk-info-box">
                 <span className="info-icon">i</span>
-                <span>QR Tarama adresi: <strong>/qrScan</strong></span>
+                <span>QR Tarama adresi: <strong>/qr</strong></span>
               </div>
               
               <div className="qr-display">
