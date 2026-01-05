@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
@@ -13,7 +13,20 @@ import Layout from './components/Layout'
 import { Employee } from './types'
 
 function App() {
-  const [employee, setEmployee] = useState<Employee | null>(null)
+  // localStorage'dan başlangıç değerini oku
+  const [employee, setEmployee] = useState<Employee | null>(() => {
+    const saved = localStorage.getItem('employee')
+    return saved ? JSON.parse(saved) : null
+  })
+
+  // Employee değiştiğinde localStorage'a kaydet
+  useEffect(() => {
+    if (employee) {
+      localStorage.setItem('employee', JSON.stringify(employee))
+    } else {
+      localStorage.removeItem('employee')
+    }
+  }, [employee])
 
   const handleLogin = (emp: Employee) => {
     setEmployee(emp)
@@ -21,6 +34,7 @@ function App() {
 
   const handleLogout = () => {
     setEmployee(null)
+    localStorage.removeItem('employee')
   }
 
   const updateEmployeeQr = (newQrCode: string) => {

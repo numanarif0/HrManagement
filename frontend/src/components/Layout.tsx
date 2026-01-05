@@ -67,12 +67,6 @@ function Layout({ employee, onLogout }: LayoutProps) {
             Oturumu Kapat
           </button>
         </nav>
-
-        <div className="sidebar-footer">
-          <button onClick={onLogout} className="logout-btn">
-            🚪 Çıkış Yap
-          </button>
-        </div>
       </aside>
       
       <main className="main-content">
