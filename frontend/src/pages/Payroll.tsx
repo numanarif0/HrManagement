@@ -242,7 +242,8 @@ function Payroll({ employee }: PayrollProps) {
       await payrollService.delete(payrollId, employee!.id);
       console.log('Silme başarılı!');
       setSuccessMessage('Bordro başarıyla silindi!');
-      await loadPayrollHistory(); // Listeyi güncelle - await ekledik
+      const targetEmployeeId = isHR ? selectedEmployeeId : employee?.id;
+      await loadPayrollHistory(targetEmployeeId); // Listeyi güncelle - doğru çalışan ID'si ile
       console.log('Liste güncellendi, payrollHistory:', payrollHistory);
       
       // Eğer silinen bordro görüntülenen bordro ise, detayı temizle
