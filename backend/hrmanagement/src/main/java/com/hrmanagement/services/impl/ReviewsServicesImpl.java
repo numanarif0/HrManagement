@@ -36,6 +36,11 @@ public class ReviewsServicesImpl implements IReviewsServices{
         Employees employee = employeesRepository.findById(dtoReviews.getEmployeeId())
                 .orElseThrow(() -> new RuntimeException("Employee not found with id: " + dtoReviews.getEmployeeId()));
 
+        // Rating 1-5 arası olmalı
+        if (dtoReviews.getRating() < 1 || dtoReviews.getRating() > 5) {
+            throw new RuntimeException("Puan 1 ile 5 arasında olmalıdır!");
+        }
+
         Reviews reviews = new Reviews();
 
         reviews.setReviewerName(dtoReviews.getReviewerName());
@@ -64,7 +69,12 @@ public class ReviewsServicesImpl implements IReviewsServices{
 
         Reviews reviews = reviewsRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Reviews not found with id: " + id));
-        
+
+        // Rating 1-5 arası olmalı
+        if (dtoReviewsIU.getRating() < 1 || dtoReviewsIU.getRating() > 5) {
+            throw new RuntimeException("Puan 1 ile 5 arasında olmalıdır!");
+        }
+
         reviews.setReviewerName(dtoReviewsIU.getReviewerName());
         reviews.setComments(dtoReviewsIU.getComments());
         reviews.setRating(dtoReviewsIU.getRating());

@@ -76,12 +76,17 @@ public class AttandanceServicesImpl implements IAttandanceServices{
 
         // Çıkış saati - DTO'dan geliyorsa onu kullan
         LocalTime checkOutTime = dtoAttandance.getCheckOutTime() != null ? dtoAttandance.getCheckOutTime() : LocalTime.now();
-        
+
+        // Çıkış saati giriş saatinden önce olamaz
+        if (checkOutTime.isBefore(attendance.getCheckInTime())) {
+            throw new RuntimeException("Çıkış saati giriş saatinden önce olamaz!");
+        }
+
         attendance.setCheckOutTime(checkOutTime);
 
         long seconds = Duration.between(attendance.getCheckInTime(), attendance.getCheckOutTime()).toSeconds();
-        double hours = seconds / 3600.0; 
-        
+        double hours = seconds / 3600.0;
+
         attendance.setHoursWorked(hours);
 
         Attendance savedAttendance = attandanceRepository.save(attendance);
@@ -122,6 +127,10 @@ public class AttandanceServicesImpl implements IAttandanceServices{
 
         // Çalışma saatini hesapla
         if (attendance.getCheckInTime() != null && attendance.getCheckOutTime() != null) {
+            // Çıkış saati giriş saatinden önce olamaz
+            if (attendance.getCheckOutTime().isBefore(attendance.getCheckInTime())) {
+                throw new RuntimeException("Çıkış saati giriş saatinden önce olamaz!");
+            }
             long seconds = Duration.between(attendance.getCheckInTime(), attendance.getCheckOutTime()).toSeconds();
             double hours = seconds / 3600.0;
             attendance.setHoursWorked(hours);

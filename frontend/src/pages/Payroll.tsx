@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Employee, Payroll as PayrollType, PayrollGenerateRequest, Attendance } from '../types';
 import { payrollService } from '../services/payrollService';
 import { attendanceService } from '../services/attendanceService';
+import { employeeService } from '../services/employeeService';
 import './Payroll.css';
 
 interface PayrollProps {
@@ -25,6 +26,10 @@ function Payroll({ employee }: PayrollProps) {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  // HR/Admin için çalışan listesi
+  const [approvedEmployees, setApprovedEmployees] = useState<Employee[]>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number>(employee?.id || 0);
+
   const [generateForm, setGenerateForm] = useState<PayrollGenerateRequest>({
     employeeId: employee?.id || 0,
     year: currentYear,
@@ -42,20 +47,38 @@ function Payroll({ employee }: PayrollProps) {
     'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
   ];
 
-  // Form ay/yıl değiştiğinde çalışma saatlerini getir
+  // HR/Admin için onaylı çalışanları getir
   useEffect(() => {
-    if (employee?.id) {
-      loadMonthlyAttendance();
-      loadPayrollHistory();
+    if (isHR) {
+      loadApprovedEmployees();
     }
-  }, [generateForm.year, generateForm.month, employee?.id]);
+  }, [isHR]);
 
-  const loadPayrollHistory = async () => {
-    if (!employee?.id) return;
+  const loadApprovedEmployees = async () => {
     try {
-      console.log('Bordro geçmişi istek employeeId:', employee.id);
+      const employees = await employeeService.getApproved();
+      setApprovedEmployees(employees);
+    } catch (error) {
+      console.error('Çalışan listesi yüklenemedi:', error);
+    }
+  };
+
+  // Form ay/yıl veya seçili çalışan değiştiğinde çalışma saatlerini getir
+  useEffect(() => {
+    const targetEmployeeId = isHR ? selectedEmployeeId : employee?.id;
+    if (targetEmployeeId) {
+      loadMonthlyAttendance(targetEmployeeId);
+      loadPayrollHistory(targetEmployeeId);
+    }
+  }, [generateForm.year, generateForm.month, selectedEmployeeId, employee?.id, isHR]);
+
+  const loadPayrollHistory = async (targetEmployeeId?: number) => {
+    const empId = targetEmployeeId || (isHR ? selectedEmployeeId : employee?.id);
+    if (!empId) return;
+    try {
+      console.log('Bordro geçmişi istek employeeId:', empId);
       console.log('Bordro geçmişi yükleniyor...');
-      const records = await payrollService.getAllByEmployee(employee.id);
+      const records = await payrollService.getAllByEmployee(empId);
       console.log('Bordro geçmişi yüklendi:', records);
       setPayrollHistory(records || []);
     } catch (error) {
@@ -64,11 +87,12 @@ function Payroll({ employee }: PayrollProps) {
     }
   };
 
-  const loadMonthlyAttendance = async () => {
-    if (!employee?.id) return;
+  const loadMonthlyAttendance = async (targetEmployeeId?: number) => {
+    const empId = targetEmployeeId || (isHR ? selectedEmployeeId : employee?.id);
+    if (!empId) return;
     try {
       const records = await attendanceService.getMonthlyRecords(
-        employee.id,
+        empId,
         generateForm.year,
         generateForm.month
       );
@@ -144,8 +168,11 @@ function Payroll({ employee }: PayrollProps) {
   };
 
   const handleGeneratePayroll = async () => {
-    if (!employee?.id) {
-      setError('Lütfen önce giriş yapın.');
+    // HR/Admin için seçili çalışan, normal kullanıcı için kendi ID'si
+    const targetEmployeeId = isHR ? selectedEmployeeId : employee?.id;
+
+    if (!targetEmployeeId) {
+      setError('Lütfen bir çalışan seçin.');
       return;
     }
 
@@ -158,16 +185,21 @@ function Payroll({ employee }: PayrollProps) {
     setError('');
 
     try {
-      console.log('Bordro oluşturuluyor:', { ...generateForm, employeeId: employee.id });
+      console.log('Bordro oluşturuluyor:', { ...generateForm, employeeId: targetEmployeeId });
       const data = await payrollService.generate({
         ...generateForm,
-        employeeId: employee.id,
+        employeeId: targetEmployeeId,
       });
       console.log('Bordro oluşturuldu:', data);
       setPayrollData(data);
       setError('');
-      setSuccessMessage('Bordro başarıyla oluşturuldu!');
-      loadPayrollHistory(); // Listeyi güncelle
+
+      // Seçili çalışanın adını bul
+      const selectedEmp = approvedEmployees.find(e => e.id === targetEmployeeId);
+      const empName = selectedEmp ? `${selectedEmp.firstname} ${selectedEmp.lastname}` : '';
+      setSuccessMessage(`Bordro başarıyla oluşturuldu!${empName ? ` (${empName})` : ''}`);
+
+      loadPayrollHistory(targetEmployeeId); // Listeyi güncelle
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err: unknown) {
       console.error('Bordro oluşturma hatası:', err);
@@ -210,7 +242,8 @@ function Payroll({ employee }: PayrollProps) {
       await payrollService.delete(payrollId, employee!.id);
       console.log('Silme başarılı!');
       setSuccessMessage('Bordro başarıyla silindi!');
-      await loadPayrollHistory(); // Listeyi güncelle - await ekledik
+      const targetEmployeeId = isHR ? selectedEmployeeId : employee?.id;
+      await loadPayrollHistory(targetEmployeeId); // Listeyi güncelle - doğru çalışan ID'si ile
       console.log('Liste güncellendi, payrollHistory:', payrollHistory);
       
       // Eğer silinen bordro görüntülenen bordro ise, detayı temizle
@@ -280,6 +313,23 @@ function Payroll({ employee }: PayrollProps) {
         <div className="card">
           <h2>Bordro Olustur (IK)</h2>
 
+          {/* Çalışan Seçimi */}
+          <div className="form-group">
+            <label>Çalışan Seç *</label>
+            <select
+              value={selectedEmployeeId}
+              onChange={(e) => setSelectedEmployeeId(Number(e.target.value))}
+              className="employee-select"
+            >
+              <option value={0}>-- Çalışan Seçin --</option>
+              {approvedEmployees.map((emp) => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.firstname} {emp.lastname} - {emp.department} ({emp.position})
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="form-row">
             <div className="form-group">
               <label>Yıl</label>
@@ -314,8 +364,14 @@ function Payroll({ employee }: PayrollProps) {
           <div className="info-box">
             <span className="info-icon">ℹ️</span>
             <span>
-              {months[generateForm.month - 1]} {generateForm.year} için toplam çalışma: 
-              <strong> {totalMonthlyHours.toFixed(1)} saat</strong>
+              {selectedEmployeeId > 0 ? (
+                <>
+                  <strong>{approvedEmployees.find(e => e.id === selectedEmployeeId)?.firstname} {approvedEmployees.find(e => e.id === selectedEmployeeId)?.lastname}</strong> - {months[generateForm.month - 1]} {generateForm.year} için toplam çalışma:
+                  <strong> {totalMonthlyHours.toFixed(1)} saat</strong>
+                </>
+              ) : (
+                'Çalışan seçin'
+              )}
             </span>
           </div>
 
