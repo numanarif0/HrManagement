@@ -52,6 +52,12 @@ input:focus, select:focus {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   padding: 24px;
   margin-bottom: 20px;
+  overflow: visible;
+}
+
+/* Payroll sayfası için özel card stilleri */
+.payroll .card {
+  padding-bottom: 30px;
 }
 
 .btn-primary {

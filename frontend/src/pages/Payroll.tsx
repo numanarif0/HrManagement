@@ -303,7 +303,7 @@ function Payroll({ employee }: PayrollProps) {
       </div>
 
       <div className={isHR ? "grid-2" : ""}>
-        <div className="card">
+        <div className="card payroll-query-card">
           <h2>Bordro Sorgula</h2>
           
           {isHR && (

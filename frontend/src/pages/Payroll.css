@@ -4,20 +4,34 @@
   margin-bottom: 20px;
 }
 
-.form-row {
+.payroll .card {
+  padding: 24px;
+}
+
+.payroll-query-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.payroll-query-card .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 15px;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
 }
 
-.button-group {
+.payroll-query-card .button-group {
   display: flex;
   gap: 10px;
+  margin-top: 10px;
 }
 
-.button-group button {
-  flex: 1;
+.payroll-query-card .button-group button {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
 }
 
 .info-box {
@@ -109,6 +123,14 @@
 
   .payroll-item.net-salary {
     grid-column: span 1;
+  }
+
+  .button-group {
+    flex-direction: column;
+  }
+
+  .button-group button {
+    width: 100%;
   }
 }
 
