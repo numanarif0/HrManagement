@@ -43,6 +43,13 @@ public class PayrollServicesImpl implements IPayrollServices {
         if (year < 2000) throw new IllegalArgumentException("year geçersiz: " + year);
         if (employeeId == null) throw new IllegalArgumentException("employeeId zorunlu");
 
+        // Gelecek tarih kontrolü - şu anki aydan ileri olamaz
+        YearMonth requestedPeriod = YearMonth.of(year, month);
+        YearMonth currentPeriod = YearMonth.now();
+        if (requestedPeriod.isAfter(currentPeriod)) {
+            throw new IllegalArgumentException("Gelecek dönemler için bordro oluşturulamaz!");
+        }
+
         Employees emp = employeesRepository.findById(employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("Employee bulunamadı: " + employeeId));
 
@@ -85,12 +92,28 @@ public class PayrollServicesImpl implements IPayrollServices {
                 .add(nullSafe(req.getBonus()));
 
         BigDecimal incomeTaxRate = nullSafe(req.getIncomeTaxRate());
+        // Vergi oranı 0-1 (yani %0-%100) arasında olmalı
         if (incomeTaxRate.compareTo(BigDecimal.ZERO) < 0) incomeTaxRate = BigDecimal.ZERO;
+        if (incomeTaxRate.compareTo(BigDecimal.ONE) > 0) {
+            throw new IllegalArgumentException("Vergi oranı %100'den fazla olamaz!");
+        }
 
         BigDecimal incomeTax = gross.multiply(incomeTaxRate);
-        BigDecimal deductions = incomeTax.add(nullSafe(req.getExtraDeduction()));
+        BigDecimal extraDeduction = nullSafe(req.getExtraDeduction());
+
+        // Ekstra kesinti negatif olamaz
+        if (extraDeduction.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Ekstra kesinti negatif olamaz!");
+        }
+
+        BigDecimal deductions = incomeTax.add(extraDeduction);
 
         BigDecimal net = gross.subtract(deductions);
+
+        // Net maaş negatif olamaz
+        if (net.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Kesintiler brüt maaştan fazla olamaz! Net maaş negatif oldu.");
+        }
 
         // Para alanlarını 2 haneye yuvarla
         baseSalary = money(baseSalary);
