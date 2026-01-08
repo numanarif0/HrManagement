@@ -84,8 +84,8 @@ public class Employees {
     private Long approvedBy;
 
     @JsonIgnore
-    @OneToOne(mappedBy = "employee", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private Payroll payroll;
+    @OneToMany(mappedBy = "employee", fetch = FetchType.LAZY)
+    private List<Payroll> payrolls;
 
     @JsonIgnore
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
