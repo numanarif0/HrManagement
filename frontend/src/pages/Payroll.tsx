@@ -282,16 +282,11 @@ function Payroll({ employee }: PayrollProps) {
       await payrollService.delete(payrollId, requesterId);
       console.log('Silme başarılı!');
       setSuccessMessage('Bordro başarıyla silindi!');
-      const targetEmployeeId = isHR ? selectedEmployeeId : employee?.id;
-      await loadPayrollHistory(targetEmployeeId); // Listeyi güncelle - doğru çalışan ID'si ile
-      console.log('Liste güncellendi, payrollHistory:', payrollHistory);
       
-      // Eğer silinen bordro görüntülenen bordro ise, detayı temizle
-      if (payrollData?.id === payrollId) {
-        setPayrollData(null);
-      }
-      
-      setTimeout(() => setSuccessMessage(''), 3000);
+      // Sayfayı yenile
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     } catch (err) {
       console.error('Bordro silme hatası:', err);
       setError('Bordro silinemedi.');
