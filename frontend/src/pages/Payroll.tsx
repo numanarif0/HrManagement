@@ -49,6 +49,18 @@ function Payroll({ employee }: PayrollProps) {
     'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
   ];
 
+  // Employee değiştiğinde queryEmployeeId ve selectedEmployeeId'yi güncelle
+  useEffect(() => {
+    if (employee?.id) {
+      if (queryEmployeeId === 0) {
+        setQueryEmployeeId(employee.id);
+      }
+      if (selectedEmployeeId === 0) {
+        setSelectedEmployeeId(employee.id);
+      }
+    }
+  }, [employee?.id]);
+
   // HR/Admin için onaylı çalışanları getir
   useEffect(() => {
     if (isHR) {
@@ -160,6 +172,7 @@ function Payroll({ employee }: PayrollProps) {
 
   const handleFetchYearlyPayroll = async () => {
     const targetEmployeeId = isHR ? queryEmployeeId : employee?.id;
+    console.log('Yıllık bordro sorgusu:', { isHR, queryEmployeeId, employeeId: employee?.id, targetEmployeeId, selectedYear });
     if (!targetEmployeeId) {
       setError('Lütfen bir çalışan seçin.');
       return;
@@ -169,7 +182,9 @@ function Payroll({ employee }: PayrollProps) {
     setError('');
 
     try {
+      console.log('API çağrısı:', targetEmployeeId, selectedYear);
       const data = await payrollService.listByEmployeeYear(targetEmployeeId, selectedYear);
+      console.log('API yanıtı:', data);
       if (data && data.length > 0) {
         setYearlyData(data);
         setError('');
@@ -177,7 +192,8 @@ function Payroll({ employee }: PayrollProps) {
         setYearlyData([]);
         setError(`${selectedYear} yılı için bordro kaydı bulunamadı.`);
       }
-    } catch {
+    } catch (err) {
+      console.error('Yıllık bordro hatası:', err);
       setError('Yıllık bordro verisi sorgulanırken bir hata oluştu.');
       setYearlyData([]);
     } finally {
