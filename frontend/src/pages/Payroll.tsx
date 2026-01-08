@@ -82,15 +82,17 @@ function Payroll({ employee }: PayrollProps) {
     const targetEmployeeId = isHR ? selectedEmployeeId : employee?.id;
     if (targetEmployeeId) {
       loadMonthlyAttendance(targetEmployeeId);
-      loadPayrollHistory(targetEmployeeId);
+      // Bordro geçmişi artık otomatik yüklenmiyor, butonla yüklenecek
     }
   }, [generateForm.year, generateForm.month, selectedEmployeeId, employee?.id, isHR]);
 
-  // Sorgulama için seçilen çalışan değiştiğinde verileri temizle
+  // Sorgulama için seçilen çalışan değiştiğinde tüm verileri temizle
   useEffect(() => {
     if (isHR) {
       setPayrollData(null);
       setYearlyData([]);
+      setPayrollHistory([]);
+      setError('');
     }
   }, [queryEmployeeId]);
 
@@ -139,6 +141,8 @@ function Payroll({ employee }: PayrollProps) {
 
     setLoading(true);
     setError('');
+    setYearlyData([]);
+    setPayrollHistory([]);
 
     try {
       const data = await payrollService.getByEmployeeAndPeriod(
@@ -180,6 +184,8 @@ function Payroll({ employee }: PayrollProps) {
 
     setLoading(true);
     setError('');
+    setPayrollData(null);
+    setPayrollHistory([]);
 
     try {
       console.log('API çağrısı:', targetEmployeeId, selectedYear);
@@ -196,6 +202,37 @@ function Payroll({ employee }: PayrollProps) {
       console.error('Yıllık bordro hatası:', err);
       setError('Yıllık bordro verisi sorgulanırken bir hata oluştu.');
       setYearlyData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFetchAllPayrolls = async () => {
+    // HR/Admin için seçili çalışan, normal kullanıcı için kendi ID'si
+    const targetEmployeeId = isHR ? queryEmployeeId : employee?.id;
+
+    if (!targetEmployeeId) {
+      setError(isHR ? 'Lütfen bir çalışan seçin.' : 'Lütfen önce giriş yapın.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setPayrollData(null);
+    setYearlyData([]);
+
+    try {
+      const records = await payrollService.getAllByEmployee(targetEmployeeId);
+      if (records && records.length > 0) {
+        setPayrollHistory(records);
+        setError('');
+      } else {
+        setPayrollHistory([]);
+        setError('Henüz bordro kaydı bulunmamaktadır.');
+      }
+    } catch {
+      setError('Bordro geçmişi yüklenirken bir hata oluştu.');
+      setPayrollHistory([]);
     } finally {
       setLoading(false);
     }
@@ -272,7 +309,8 @@ function Payroll({ employee }: PayrollProps) {
     setError('');
 
     try {
-      const requesterId = isHR ? selectedEmployeeId : employee?.id;
+      // requesterId her zaman login olan kullanıcının ID'si olmalı (yetki kontrolü için)
+      const requesterId = employee?.id;
       if (!requesterId) {
         setError('Kullanıcı bilgisi bulunamadı.');
         setLoading(false);
@@ -282,15 +320,11 @@ function Payroll({ employee }: PayrollProps) {
       await payrollService.delete(payrollId, requesterId);
       console.log('Silme başarılı!');
       setSuccessMessage('Bordro başarıyla silindi!');
-      const targetEmployeeId = isHR ? selectedEmployeeId : employee?.id;
-      await loadPayrollHistory(targetEmployeeId); // Listeyi güncelle - doğru çalışan ID'si ile
-      console.log('Liste güncellendi, payrollHistory:', payrollHistory);
-      
-      // Eğer silinen bordro görüntülenen bordro ise, detayı temizle
-      if (payrollData?.id === payrollId) {
-        setPayrollData(null);
-      }
-      
+
+      // Tüm listeleri güncelle (sayfa yenilemeden)
+      setPayrollHistory(prev => prev.filter(p => p.id !== payrollId));
+      setYearlyData(prev => prev.filter(p => p.id !== payrollId));
+      setPayrollData(null);
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       console.error('Bordro silme hatası:', err);
@@ -308,7 +342,7 @@ function Payroll({ employee }: PayrollProps) {
       </div>
 
       <div className={isHR ? "grid-2" : ""}>
-        <div className="card">
+        <div className="card payroll-query-card">
           <h2>Bordro Sorgula</h2>
           
           {isHR && (
@@ -336,7 +370,7 @@ function Payroll({ employee }: PayrollProps) {
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
               >
-                {[currentYear - 1, currentYear, currentYear + 1].map((year) => (
+                {[currentYear - 4, currentYear - 3, currentYear - 2, currentYear - 1, currentYear].map((year) => (
                   <option key={year} value={year}>{year}</option>
                 ))}
               </select>
@@ -360,6 +394,9 @@ function Payroll({ employee }: PayrollProps) {
             </button>
             <button onClick={handleFetchYearlyPayroll} className="btn-warning" disabled={loading}>
               Yıllık Görünüm
+            </button>
+            <button onClick={handleFetchAllPayrolls} className="btn-secondary" disabled={loading}>
+              {isHR ? 'Tüm Bordroları Getir' : 'Tüm Bordrolarım'}
             </button>
           </div>
 
@@ -398,7 +435,7 @@ function Payroll({ employee }: PayrollProps) {
                   year: Number(e.target.value)
                 })}
               >
-                {[currentYear - 1, currentYear, currentYear + 1].map((year) => (
+                {[currentYear - 1, currentYear].map((year) => (
                   <option key={year} value={year}>{year}</option>
                 ))}
               </select>
@@ -580,6 +617,7 @@ function Payroll({ employee }: PayrollProps) {
                 <th>Brüt Maaş</th>
                 <th>Kesintiler</th>
                 <th>Net Maaş</th>
+                {isHR && <th>İşlemler</th>}
               </tr>
             </thead>
             <tbody>
@@ -589,6 +627,17 @@ function Payroll({ employee }: PayrollProps) {
                   <td>{formatCurrency(payroll.grossSalary)}</td>
                   <td className="negative">-{formatCurrency(payroll.deductions)}</td>
                   <td className="positive">{formatCurrency(payroll.netSalary)}</td>
+                  {isHR && (
+                    <td>
+                      <button
+                        className="btn-danger btn-small"
+                        onClick={() => handleDeletePayroll(payroll.id)}
+                        disabled={loading}
+                      >
+                        Sil
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
