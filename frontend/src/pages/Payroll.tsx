@@ -29,6 +29,8 @@ function Payroll({ employee }: PayrollProps) {
   // HR/Admin için çalışan listesi
   const [approvedEmployees, setApprovedEmployees] = useState<Employee[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number>(employee?.id || 0);
+  // Bordro sorgulama için seçili çalışan (HR/Admin)
+  const [queryEmployeeId, setQueryEmployeeId] = useState<number>(employee?.id || 0);
 
   const [generateForm, setGenerateForm] = useState<PayrollGenerateRequest>({
     employeeId: employee?.id || 0,
@@ -72,6 +74,14 @@ function Payroll({ employee }: PayrollProps) {
     }
   }, [generateForm.year, generateForm.month, selectedEmployeeId, employee?.id, isHR]);
 
+  // Sorgulama için seçilen çalışan değiştiğinde verileri temizle
+  useEffect(() => {
+    if (isHR) {
+      setPayrollData(null);
+      setYearlyData([]);
+    }
+  }, [queryEmployeeId]);
+
   const loadPayrollHistory = async (targetEmployeeId?: number) => {
     const empId = targetEmployeeId || (isHR ? selectedEmployeeId : employee?.id);
     if (!empId) return;
@@ -109,14 +119,18 @@ function Payroll({ employee }: PayrollProps) {
   );
 
   const handleFetchPayroll = async () => {
-    if (!employee?.id) return;
+    const targetEmployeeId = isHR ? queryEmployeeId : employee?.id;
+    if (!targetEmployeeId) {
+      setError('Lütfen bir çalışan seçin.');
+      return;
+    }
 
     setLoading(true);
     setError('');
 
     try {
       const data = await payrollService.getByEmployeeAndPeriod(
-        employee.id,
+        targetEmployeeId,
         selectedYear,
         selectedMonth
       );
@@ -145,13 +159,17 @@ function Payroll({ employee }: PayrollProps) {
   };
 
   const handleFetchYearlyPayroll = async () => {
-    if (!employee?.id) return;
+    const targetEmployeeId = isHR ? queryEmployeeId : employee?.id;
+    if (!targetEmployeeId) {
+      setError('Lütfen bir çalışan seçin.');
+      return;
+    }
 
     setLoading(true);
     setError('');
 
     try {
-      const data = await payrollService.listByEmployeeYear(employee.id, selectedYear);
+      const data = await payrollService.listByEmployeeYear(targetEmployeeId, selectedYear);
       if (data && data.length > 0) {
         setYearlyData(data);
         setError('');
@@ -277,6 +295,24 @@ function Payroll({ employee }: PayrollProps) {
         <div className="card">
           <h2>Bordro Sorgula</h2>
           
+          {isHR && (
+            <div className="form-group">
+              <label>Çalışan Seç</label>
+              <select
+                value={queryEmployeeId}
+                onChange={(e) => setQueryEmployeeId(Number(e.target.value))}
+                className="employee-select"
+              >
+                <option value={0}>-- Çalışan Seçin --</option>
+                {approvedEmployees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.firstname} {emp.lastname} - {emp.department} ({emp.position})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="form-row">
             <div className="form-group">
               <label>Yıl</label>
