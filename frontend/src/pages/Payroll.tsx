@@ -238,8 +238,14 @@ function Payroll({ employee }: PayrollProps) {
     setError('');
 
     try {
-      console.log('API çağrısı yapılıyor:', `/payroll/${payrollId}`, 'requesterId:', employee?.id);
-      await payrollService.delete(payrollId, employee!.id);
+      const requesterId = isHR ? selectedEmployeeId : employee?.id;
+      if (!requesterId) {
+        setError('Kullanıcı bilgisi bulunamadı.');
+        setLoading(false);
+        return;
+      }
+      console.log('API çağrısı yapılıyor:', `/payroll/${payrollId}`, 'requesterId:', requesterId);
+      await payrollService.delete(payrollId, requesterId);
       console.log('Silme başarılı!');
       setSuccessMessage('Bordro başarıyla silindi!');
       const targetEmployeeId = isHR ? selectedEmployeeId : employee?.id;
@@ -380,6 +386,7 @@ function Payroll({ employee }: PayrollProps) {
               <label>Taban Maaş (₺)</label>
               <input
                 type="number"
+                min="0"
                 value={generateForm.baseSalary || ''}
                 onChange={(e) => setGenerateForm({
                   ...generateForm,
@@ -392,6 +399,7 @@ function Payroll({ employee }: PayrollProps) {
               <label>Prim (₺)</label>
               <input
                 type="number"
+                min="0"
                 value={generateForm.bonus || ''}
                 onChange={(e) => setGenerateForm({
                   ...generateForm,
@@ -407,23 +415,27 @@ function Payroll({ employee }: PayrollProps) {
               <label>Standart Saat</label>
               <input
                 type="number"
-                value={generateForm.standardMonthlyHours}
+                min="0"
+                value={generateForm.standardMonthlyHours || ''}
                 onChange={(e) => setGenerateForm({
                   ...generateForm,
-                  standardMonthlyHours: Number(e.target.value)
+                  standardMonthlyHours: e.target.value === '' ? 0 : Number(e.target.value)
                 })}
+                placeholder="160"
               />
             </div>
             <div className="form-group">
               <label>Mesai Çarpanı</label>
               <input
                 type="number"
+                min="0"
                 step="0.1"
-                value={generateForm.overtimeMultiplier}
+                value={generateForm.overtimeMultiplier || ''}
                 onChange={(e) => setGenerateForm({
                   ...generateForm,
-                  overtimeMultiplier: Number(e.target.value)
+                  overtimeMultiplier: e.target.value === '' ? 0 : parseFloat(e.target.value)
                 })}
+                placeholder="1.5"
               />
             </div>
           </div>
@@ -433,11 +445,12 @@ function Payroll({ employee }: PayrollProps) {
               <label>Vergi Oranı (%)</label>
               <input
                 type="number"
+                min="0"
                 step="0.01"
-                value={(generateForm.incomeTaxRate || 0) * 100}
+                value={generateForm.incomeTaxRate ? (generateForm.incomeTaxRate * 100) : ''}
                 onChange={(e) => setGenerateForm({
                   ...generateForm,
-                  incomeTaxRate: (parseFloat(e.target.value) || 0) / 100
+                  incomeTaxRate: e.target.value === '' ? 0 : parseFloat(e.target.value) / 100
                 })}
                 placeholder="15"
               />
@@ -446,6 +459,7 @@ function Payroll({ employee }: PayrollProps) {
               <label>Ekstra Kesinti (₺)</label>
               <input
                 type="number"
+                min="0"
                 value={generateForm.extraDeduction || ''}
                 onChange={(e) => setGenerateForm({
                   ...generateForm,
